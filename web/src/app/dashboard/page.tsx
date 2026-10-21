@@ -7,6 +7,7 @@ import Shell from "@/components/Shell";
 import { useExtension } from "@/components/ExtensionConnect";
 import { JobTicker } from "@/components/Trending";
 import type { TickerJob } from "@/lib/stats";
+import { clearPendingRole, readPendingRole, withRole } from "@/lib/pending-role";
 import type { Job, Prefs } from "@/lib/types";
 
 interface ProfileLite {
@@ -49,6 +50,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("tailored");
   const [tailoring, setTailoring] = useState<string | null>(null);
   const [hunterMsg, setHunterMsg] = useState<string | null>(null);
+  const [pendingRole, setPendingRole] = useState<string | null>(null);
   const stopRef = useRef(false);
   const [ticker, setTicker] = useState<TickerJob[]>([]);
 
@@ -63,6 +65,9 @@ export default function Dashboard() {
     ]);
     if (!profile.onboarded) return router.replace("/onboarding");
     setProfile(profile);
+    const r = readPendingRole();
+    if (r && !profile.prefs.target_roles.some((x) => x.toLowerCase() === r.toLowerCase())) setPendingRole(r);
+    else clearPendingRole();
     setJobs(jobs);
   }, [router]);
 
@@ -156,19 +161,43 @@ export default function Dashboard() {
     <Shell>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <p className="font-bold text-muted mb-2">Hey{profile.full_name ? ` ${profile.full_name.split(" ")[0]}` : ""}, here&apos;s your hunt</p>
-          <h1 className="display text-5xl sm:text-6xl">Your pipeline</h1>
+          <p className="font-semibold text-muted mb-2">Hey{profile.full_name ? ` ${profile.full_name.split(" ")[0]}` : ""}, here&apos;s your hunt</p>
+          <h1 className="display text-4xl sm:text-5xl">Your pipeline</h1>
         </div>
       </div>
 
       {ticker.length > 0 && (
-        <div className="mb-8 -mx-4 sm:mx-0 sm:rounded-full sm:overflow-hidden sm:border-2 sm:border-ink">
-          <JobTicker jobs={ticker} tone="ink" />
+        <div className="mb-8 -mx-4 sm:mx-0 sm:rounded-[28px] bg-mist py-3">
+          <p className="px-5 pb-1 text-sm font-semibold text-muted">Fresh on the portals today. Click to open a job.</p>
+          <JobTicker jobs={ticker} />
+        </div>
+      )}
+
+      {pendingRole && (
+        <div className="card px-6 py-5 mb-8 flex flex-wrap items-center justify-between gap-4">
+          <p>
+            Add <b>{pendingRole}</b> to the roles Hunter searches for?
+          </p>
+          <div className="flex gap-2">
+            <button
+              className="btn-primary"
+              onClick={async () => {
+                const prefs = { ...profile.prefs, target_roles: withRole(profile.prefs.target_roles, pendingRole) };
+                await api("/api/profile", { method: "POST", body: JSON.stringify({ prefs }) });
+                clearPendingRole();
+                setPendingRole(null);
+                load();
+              }}
+            >
+              Add role
+            </button>
+            <button className="btn-ghost" onClick={() => { clearPendingRole(); setPendingRole(null); }}>No thanks</button>
+          </div>
         </div>
       )}
 
       {/* Agents */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
         <AgentCard name="Hunter" live detail={`Last run ${ago(profile.last_hunter_at)}`}>
           {extension ? (
             <button className="btn-primary w-full" onClick={runHunter}>Run Hunter now</button>
@@ -185,8 +214,25 @@ export default function Dashboard() {
           )}
           {tailoring && <p className="text-xs text-muted mt-2">{tailoring}</p>}
         </AgentCard>
-        <AgentCard name="Applier" detail="Apply packs + referral-or-direct advice" />
-        <AgentCard name="Networker" detail="People to ask for referrals, drafted in your voice" />
+        <div className="card p-6 flex flex-col">
+          <p className="text-xl font-bold tracking-tight mb-4">Progress</p>
+          <div className="grid grid-cols-3 gap-2 flex-1">
+            {([
+              ["tailored", "Ready", counts.tailored],
+              ["stretch", "Stretch", counts.stretch],
+              ["applied", "Applied", counts.applied],
+            ] as const).map(([id, label, n]) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className="rounded-[18px] bg-paper hover:bg-mist transition-colors px-3 py-3 text-left"
+              >
+                <span className="block text-3xl font-bold tabular-nums">{n}</span>
+                <span className="block text-xs text-muted mt-1">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -195,15 +241,15 @@ export default function Dashboard() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap border-2 border-ink transition ${tab === t.id ? "bg-ink text-white shadow-[3px_3px_0_var(--color-accent)]" : "bg-white text-ink hover:bg-zest"}`}
+            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${tab === t.id ? "bg-ink text-white" : "bg-card text-ink hover:bg-mist"}`}
           >
-            {t.label} <span className={tab === t.id ? "text-zest" : "text-muted"}>{counts[t.id]}</span>
+            {t.label} <span className={tab === t.id ? "text-white/60" : "text-muted"}>{counts[t.id]}</span>
           </button>
         ))}
       </div>
 
       {visible.length === 0 ? (
-        <div className="card-flat border-dashed p-10 text-center text-muted">
+        <div className="card p-10 text-center text-muted">
           {jobs.length === 0
             ? "No jobs yet. Run Hunter from the card above (or the extension), and new jobs will show up here."
             : "Nothing in this list right now."}
@@ -219,15 +265,12 @@ export default function Dashboard() {
   );
 }
 
-const AGENT_TILE: Record<string, string> = { Hunter: "bg-zest", Tailor: "bg-accent", Applier: "bg-ice", Networker: "bg-tangerine" };
-
 function AgentCard({ name, live, detail, children }: { name: string; live?: boolean; detail: string; children?: React.ReactNode }) {
   return (
-    <div className={`card p-5 flex flex-col ${live ? "" : "bg-card/60 shadow-none"}`}>
-      <span className={`${AGENT_TILE[name]} h-3 w-14 rounded-full border-2 border-ink mb-4`} aria-hidden />
+    <div className={`card p-6 flex flex-col ${live ? "" : "opacity-60"}`}>
       <div className="flex items-center justify-between mb-1">
-        <p className="display text-2xl">{name}</p>
-        <span className={`chip border-2 border-ink ${live ? "bg-accent text-ink" : "bg-white text-muted"}`}>{live ? "Live" : "Up next"}</span>
+        <p className="text-xl font-bold tracking-tight">{name}</p>
+        <span className={`chip ${live ? "bg-accent-soft text-accent" : "bg-mist text-muted"}`}>{live ? "Live" : "Coming next"}</span>
       </div>
       <p className="text-sm text-muted mb-4 flex-1">{detail}</p>
       {children}
@@ -236,18 +279,18 @@ function AgentCard({ name, live, detail, children }: { name: string; live?: bool
 }
 
 function StatusChip({ job }: { job: Job }) {
-  if (job.applied) return <span className="chip bg-ink text-white border-2 border-ink">Applied</span>;
+  if (job.applied) return <span className="chip bg-ink text-white">Applied</span>;
   const map: Record<string, [string, string]> = {
-    tailored: ["Tailored", "bg-accent text-ink"],
-    stretch: ["Stretch", "bg-tangerine text-ink"],
-    skipped: ["Skipped", "bg-paper text-muted"],
-    found: ["Reading job…", "bg-paper text-muted"],
-    pending: ["Waiting for Tailor", "bg-paper text-muted"],
-    scoring: ["Tailoring…", "bg-paper text-muted"],
-    error: ["Problem", "bg-rose text-white"],
+    tailored: ["Tailored", "bg-accent-soft text-accent"],
+    stretch: ["Stretch", "bg-amber-soft text-amber"],
+    skipped: ["Skipped", "bg-mist text-muted"],
+    found: ["Reading job…", "bg-mist text-muted"],
+    pending: ["Waiting for Tailor", "bg-mist text-muted"],
+    scoring: ["Tailoring…", "bg-mist text-muted"],
+    error: ["Problem", "bg-rose-soft text-rose"],
   };
-  const [label, cls] = map[job.status] || [job.status, "bg-paper text-muted"];
-  return <span className={`chip border-2 border-ink ${cls}`}>{label}</span>;
+  const [label, cls] = map[job.status] || [job.status, "bg-mist text-muted"];
+  return <span className={`chip ${cls}`}>{label}</span>;
 }
 
 function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, b: Record<string, unknown>) => Promise<void>; onDownload: (id: string) => Promise<void> }) {
@@ -258,9 +301,9 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
   return (
     <div className="card">
       <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-        <div className={`w-16 h-16 shrink-0 grid place-items-center rounded-2xl border-2 border-ink ${job.status === "tailored" ? "bg-accent" : job.status === "stretch" ? "bg-zest" : "bg-paper"}`}>
+        <div className={`w-16 h-16 shrink-0 grid place-items-center rounded-full ${job.status === "tailored" ? "bg-accent-soft" : job.status === "stretch" ? "bg-amber-soft" : "bg-mist"}`}>
           {job.match_percent !== null ? (
-            <p className={`display text-3xl leading-none ${job.status === "tailored" ? "text-ink" : job.status === "stretch" ? "text-amber" : "text-muted"}`}>
+            <p className={`text-2xl font-bold leading-none tabular-nums ${job.status === "tailored" ? "text-accent" : job.status === "stretch" ? "text-amber" : "text-muted"}`}>
               {job.match_percent}<span className="text-base">%</span>
             </p>
           ) : (
@@ -268,10 +311,10 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
           )}
         </div>
         <div className="flex-1 min-w-[200px]">
-          <button className="text-left text-lg font-bold leading-snug hover:underline decoration-accent decoration-2 underline-offset-4" onClick={() => setOpen(!open)}>{job.title}</button>
+          <button className="text-left text-lg font-bold leading-snug hover:underline decoration-ink/30 decoration-2 underline-offset-4" onClick={() => setOpen(!open)}>{job.title}</button>
           <p className="text-sm text-muted flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
             <span>{[job.company, job.location].filter(Boolean).join(", ")}</span>
-            <span className="chip bg-ice text-ink border border-ink/40">{PORTAL_NAME[job.portal] || job.portal}</span>
+            <span className="chip bg-mist text-muted">{PORTAL_NAME[job.portal] || job.portal}</span>
           </p>
         </div>
         <StatusChip job={job} />
@@ -283,7 +326,7 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
       </div>
 
       {open && (
-        <div className="border-t-2 border-ink p-4 sm:p-5 grid md:grid-cols-2 gap-6 text-sm">
+        <div className=" border-t border-line p-4 sm:p-5 grid md:grid-cols-2 gap-6 text-sm">
           <div className="space-y-3">
             {a?.summary && <p>{a.summary}</p>}
             {a?.skip_reason && <p className="text-muted">Skipped: {a.skip_reason}</p>}
@@ -292,7 +335,7 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
             {!!a?.matched?.length && (
               <div>
                 <p className="font-medium mb-1">You match</p>
-                <div className="flex flex-wrap gap-1.5">{a.matched.map((m) => <span key={m} className="chip bg-accent-soft text-ink border border-accent">{m}</span>)}</div>
+                <div className="flex flex-wrap gap-1.5">{a.matched.map((m) => <span key={m} className="chip bg-accent-soft text-accent">{m}</span>)}</div>
               </div>
             )}
             {!!a?.gaps?.length && (
@@ -310,7 +353,7 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
                 {job.tailored_edits.note && <p className="text-muted mb-2">{job.tailored_edits.note}</p>}
                 <ul className="space-y-2 max-h-72 overflow-auto pr-1">
                   {job.tailored_edits.changes.map((c, k) => (
-                    <li key={k} className="rounded-lg bg-paper p-2.5">
+                    <li key={k} className="rounded-2xl bg-paper p-3">
                       {c.before && <p className="text-muted line-through decoration-muted/40">{c.before}</p>}
                       <p>{c.after}</p>
                       {c.why && <p className="text-xs text-muted mt-1">{c.why}</p>}

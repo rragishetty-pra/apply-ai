@@ -6,7 +6,8 @@ import { supabaseAdmin } from "./supabase-admin";
  * - A searched role is only shown once at least MIN_HUNTERS people search it.
  * - The ticker takes at most PER_USER jobs from any one person, and one job per role family,
  *   so it never reveals a single user's hunt and never sticks to one field.
- * - Gaps are filled from a varied sample pool, flagged as samples.
+ * - Missing top roles are filled from a varied sample pool (flagged). The ticker only ever shows
+ *   real postings with a working link — never filler.
  */
 
 export interface TopSearch {
@@ -18,6 +19,7 @@ export interface TopSearch {
 
 export interface TickerJob {
   title: string;
+  url: string;
   company: string | null;
   location: string | null;
   portal: string | null;
@@ -44,8 +46,6 @@ const SAMPLE_ROLES = [
   "UX Researcher", "Sales Development Rep", "Cloud Architect", "QA Automation Engineer", "Brand Designer",
   "Machine Learning Engineer", "Social Media Manager", "Supply Chain Analyst", "Full Stack Developer",
 ];
-const SAMPLE_CITIES = ["Bengaluru", "Hyderabad", "Pune", "Mumbai", "Gurugram", "Chennai", "Remote", "Noida", "Kochi"];
-const SAMPLE_PORTALS = ["naukri", "linkedin", "indeed"];
 
 function shuffle<T>(a: T[]): T[] {
   const arr = [...a];
@@ -72,17 +72,10 @@ function startOfTodayIST(): string {
   return new Date(ist.getTime() - 5.5 * 3600_000).toISOString();
 }
 
-function samples(nTop: number, nTicker: number, taken: Set<string>) {
+function samples(nTop: number, taken: Set<string>) {
   const roles = shuffle(SAMPLE_ROLES).filter((r) => !taken.has(family(r)));
   const top: TopSearch[] = roles.slice(0, nTop).map((role) => ({ role, hunters: null, fresh: null, sample: true }));
-  const ticker: TickerJob[] = roles.slice(nTop, nTop + nTicker).map((title) => ({
-    title,
-    company: null,
-    location: SAMPLE_CITIES[Math.floor(Math.random() * SAMPLE_CITIES.length)],
-    portal: SAMPLE_PORTALS[Math.floor(Math.random() * SAMPLE_PORTALS.length)],
-    sample: true,
-  }));
-  return { top, ticker };
+  return { top };
 }
 
 export async function getTodayStats(): Promise<TodayStats> {
@@ -99,7 +92,7 @@ export async function getTodayStats(): Promise<TodayStats> {
       db.from("profiles").select("id, prefs").eq("onboarded", true).limit(5000),
       db
         .from("jobs")
-        .select("user_id, title, company, location, portal, status")
+        .select("user_id, title, company, location, portal, status, url")
         .gte("created_at", since)
         .neq("status", "skipped")
         .order("created_at", { ascending: false })
@@ -145,14 +138,14 @@ export async function getTodayStats(): Promise<TodayStats> {
     const perUser = new Map<string, number>();
     const seenFamilies = new Set<string>();
     for (const j of shuffle(todays)) {
-      if (!j.title) continue;
+      if (!j.title || !/^https?:\/\//.test(j.url || "")) continue;
       const f = family(j.title);
       if (!f || seenFamilies.has(f)) continue;
       const n = perUser.get(j.user_id) || 0;
       if (n >= PER_USER) continue;
       perUser.set(j.user_id, n + 1);
       seenFamilies.add(f);
-      ticker.push({ title: j.title, company: j.company, location: j.location, portal: j.portal, sample: false });
+      ticker.push({ title: j.title, url: j.url, company: j.company, location: j.location, portal: j.portal, sample: false });
       if (ticker.length >= 14) break;
     }
   } catch {
@@ -160,12 +153,12 @@ export async function getTodayStats(): Promise<TodayStats> {
   }
 
   const taken = new Set([...top.map((t) => family(t.role)), ...ticker.map((t) => family(t.title))]);
-  const fill = samples(3 - top.length, Math.max(0, 12 - ticker.length), taken);
-  const usesSamples = fill.top.length > 0 || fill.ticker.length > 0;
+  const fill = samples(3 - top.length, taken);
+  const usesSamples = fill.top.length > 0;
 
   return {
     top: [...top, ...fill.top],
-    ticker: shuffle([...ticker, ...fill.ticker]),
+    ticker,
     portals,
     freshToday,
     hunters,

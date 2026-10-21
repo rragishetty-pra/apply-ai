@@ -5,11 +5,8 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 
 export function Logo({ className = "", light = false }: { className?: string; light?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 ${className}`}>
-      <span className={`display text-[28px] leading-none ${light ? "text-white" : "text-ink"}`}>apply</span>
-      <span className="display text-base leading-none bg-accent text-ink border-2 border-ink rounded-full px-2 py-1 -rotate-6 shadow-[2px_2px_0_var(--color-ink)]">
-        .ai
-      </span>
+    <span className={`inline-flex items-baseline text-[26px] font-bold tracking-tight leading-none ${light ? "text-white" : "text-ink"} ${className}`}>
+      apply<span className={light ? "text-white/50" : "text-muted"}>.ai</span>
     </span>
   );
 }
@@ -20,21 +17,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const link = (href: string, label: string) => (
     <Link
       href={href}
-      className={`px-4 py-1.5 rounded-full text-sm font-bold border-2 ${path.startsWith(href) ? "bg-ink text-white border-ink" : "border-transparent text-muted hover:text-ink hover:border-ink"}`}
+      className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${path.startsWith(href) ? "bg-ink text-white" : "text-muted hover:text-ink hover:bg-mist"}`}
     >
       {label}
     </Link>
   );
   return (
     <div className="min-h-screen">
-      <header className="border-b-2 border-ink bg-paper/90 backdrop-blur sticky top-0 z-20">
+      <header className=" bg-paper/90 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
           <Link href="/dashboard"><Logo /></Link>
           <nav className="flex items-center gap-1">
             {link("/dashboard", "Dashboard")}
             {link("/settings", "Settings")}
             <button
-              className="px-4 py-1.5 rounded-full text-sm font-bold text-muted hover:text-ink"
+              className="px-4 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink hover:bg-mist"
               onClick={async () => {
                 await supabaseBrowser().auth.signOut();
                 router.replace("/");

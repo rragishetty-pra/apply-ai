@@ -126,7 +126,7 @@ export default function ExtensionConnect({ initialStatus = {}, compact = false }
 function Step({ n, done, title, children }: { n: number; done: boolean; title: string; children: React.ReactNode }) {
   return (
     <li className="flex gap-4">
-      <span className={`mt-0.5 h-7 w-7 shrink-0 rounded-full grid place-items-center text-sm font-bold border-2 border-ink ${done ? "bg-accent text-ink" : "bg-white text-ink"}`}>
+      <span className={`mt-0.5 h-7 w-7 shrink-0 rounded-full grid place-items-center text-sm font-bold ${done ? "bg-ink text-white" : "bg-mist text-muted"}`}>
         {done ? "✓" : n}
       </span>
       <div className="flex-1">
@@ -138,6 +138,6 @@ function Step({ n, done, title, children }: { n: number; done: boolean; title: s
 }
 
 function StatusDot({ state }: { state?: string }) {
-  const color = state === "ok" ? "bg-[#2bd47d]" : state === "login_needed" ? "bg-tangerine" : "bg-line";
-  return <span className={`h-2.5 w-2.5 rounded-full border border-ink ${color}`} title={state === "ok" ? "Signed in" : state === "login_needed" ? "Sign-in needed" : "Not checked"} />;
+  const color = state === "ok" ? "bg-accent" : state === "login_needed" ? "bg-[#c4a067]" : "bg-[#cfcec9]";
+  return <span className={`h-2.5 w-2.5 rounded-full ${color}`} title={state === "ok" ? "Signed in" : state === "login_needed" ? "Sign-in needed" : "Not checked"} />;
 }

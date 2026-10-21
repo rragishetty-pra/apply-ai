@@ -20,10 +20,10 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   return (
     <label className="flex items-center gap-3 cursor-pointer select-none">
       <span
-        className={`relative h-6 w-10 rounded-full border-2 border-ink transition ${checked ? "bg-accent" : "bg-line"}`}
+        className={`relative h-6 w-11 rounded-full transition-colors ${checked ? "bg-ink" : "bg-[#d6d5d0]"}`}
         onClick={() => onChange(!checked)}
       >
-        <span className={`absolute top-0 h-5 w-5 rounded-full bg-white border-2 border-ink transition-all ${checked ? "left-[16px]" : "left-0"}`} />
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${checked ? "left-[22px]" : "left-0.5"}`} />
       </span>
       <span className="text-sm">{label}</span>
     </label>
@@ -88,7 +88,7 @@ export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange:
         </div>
         <div>
           <label className="label">Tailor a CV when the match is at least {prefs.match_threshold}%</label>
-          <input type="range" min={50} max={90} step={5} value={prefs.match_threshold} onChange={(e) => set("match_threshold", Number(e.target.value))} className="w-full accent-[#ff4d8d]" />
+          <input type="range" min={50} max={90} step={5} value={prefs.match_threshold} onChange={(e) => set("match_threshold", Number(e.target.value))} className="w-full accent-[#1d1d1f]" />
           <p className="hint">Jobs a little below this are kept as “stretch” jobs with the skills they ask for, so you know what to learn.</p>
         </div>
       </section>
@@ -105,7 +105,7 @@ export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange:
                   key={p.id}
                   type="button"
                   onClick={() => set("portals", on ? prefs.portals.filter((x) => x !== p.id) : [...prefs.portals, p.id])}
-                  className={`chip px-4 py-1.5 text-sm border-2 ${on ? "bg-ink text-white border-ink shadow-[2px_2px_0_var(--color-accent)]" : "bg-card border-ink/30 text-muted"}`}
+                  className={`chip px-4 py-2 text-sm transition-colors ${on ? "bg-ink text-white" : "bg-mist text-muted hover:text-ink"}`}
                 >
                   {p.name}
                 </button>

@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <style>
-    :root { --ink:#1b1d1f; --muted:#5f6368; --line:#e4e0d6; --paper:#f7f5f0; --accent:#1f6f5c; --amber:#b26b00; }
+    :root { --ink:#1d1d1f; --muted:#6e6e73; --line:#e5e4e0; --paper:#f4f4f2; --mist:#ebeae6; --accent:#4a6b57; --amber:#7d6136; }
     * { box-sizing: border-box; }
-    body { width: 340px; margin: 0; font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); }
+    body { width: 340px; margin: 0; font: 13px/1.5 "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); }
     header { display:flex; justify-content:space-between; align-items:baseline; padding: 14px 16px 10px; }
-    .logo { font: 22px Georgia, serif; } .logo b { color: var(--accent); font-family: system-ui; }
+    .logo { font: 700 20px/1 system-ui, sans-serif; letter-spacing: -0.03em; } .logo b { color: var(--muted); font-weight: 700; }
     .status { font-size: 12px; color: var(--muted); }
     main { padding: 0 16px 16px; }
-    .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; }
-    button { width:100%; border:0; border-radius:10px; padding:9px 12px; font: 500 13px system-ui; cursor:pointer; margin-top:6px; }
+    .card { background:#fff; border-radius:20px; padding:14px; margin-bottom:10px; }
+    button { width:100%; border:0; border-radius:999px; padding:10px 14px; font: 600 13px system-ui; cursor:pointer; margin-top:8px; }
     .primary { background: var(--ink); color:#fff; } .accent { background: var(--accent); color:#fff; }
-    .ghost { background:#fff; border:1px solid var(--line); color: var(--ink); }
+    .ghost { background: var(--mist); color: var(--ink); }
     button:disabled { opacity:.5; cursor:default; }
     .muted { color: var(--muted); font-size: 12px; }
-    .bar { height:4px; background: var(--line); border-radius:4px; overflow:hidden; margin-top:8px; }
+    .bar { height:4px; background: var(--mist); border-radius:4px; overflow:hidden; margin-top:8px; }
     .bar i { display:block; height:100%; background: var(--accent); width:0; transition: width .3s; }
     pre { margin:0; max-height:150px; overflow:auto; white-space:pre-wrap; font: 11px/1.4 ui-monospace, Menlo, monospace; color: var(--muted); }
     .row { display:flex; gap:6px; } .row button { flex:1; }
@@ -25,7 +25,7 @@
 </head>
 <body>
   <header>
-    <span class="logo">Apply<b>.ai</b></span>
+    <span class="logo">apply<b>.ai</b></span>
     <span id="status" class="status">…</span>
   </header>
   <main>

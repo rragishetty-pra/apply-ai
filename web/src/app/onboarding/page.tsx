@@ -6,6 +6,7 @@ import { useAuth } from "@/components/useAuth";
 import { Logo } from "@/components/Shell";
 import PrefsForm from "@/components/PrefsForm";
 import ExtensionConnect from "@/components/ExtensionConnect";
+import { clearPendingRole, readPendingRole, withRole } from "@/lib/pending-role";
 import { DEFAULT_PREFS, mergePrefs, type Prefs } from "@/lib/types";
 
 interface Insights {
@@ -35,7 +36,8 @@ export default function Onboarding() {
   useEffect(() => {
     if (!session) return;
     api<{ profile: { prefs: Prefs; cv_filename: string | null; cv_format: string | null; portal_status: Record<string, string> } }>("/api/profile").then(({ profile }) => {
-      setPrefs(mergePrefs(profile.prefs));
+      const merged = mergePrefs(profile.prefs);
+      setPrefs({ ...merged, target_roles: withRole(merged.target_roles, readPendingRole()) });
       setPortalStatus(profile.portal_status || {});
       if (profile.cv_filename) setCv({ filename: profile.cv_filename, format: profile.cv_format || "" });
     });
@@ -54,7 +56,7 @@ export default function Onboarding() {
         // Pre-fill answers from the CV; the user reviews them on the next step.
         setPrefs((p) => ({
           ...p,
-          target_roles: p.target_roles.length ? p.target_roles : ins.target_roles || [],
+          target_roles: p.target_roles.length > 1 ? p.target_roles : withRole([...p.target_roles, ...(ins.target_roles || [])].filter((r, k, a) => a.findIndex((x) => x.toLowerCase() === r.toLowerCase()) === k), readPendingRole()).slice(0, 4),
           key_skills: p.key_skills.length ? p.key_skills : ins.key_skills || [],
           experience_years: p.experience_years ?? ins.experience_years ?? null,
           locations: p.locations.length ? p.locations : ins.locations || [],
@@ -74,7 +76,10 @@ export default function Onboarding() {
     setSaving(true);
     try {
       await api("/api/profile", { method: "POST", body: JSON.stringify({ prefs, ...(onboarded ? { onboarded: true } : {}) }) });
-      if (onboarded) router.replace("/dashboard");
+      if (onboarded) {
+        clearPendingRole();
+        router.replace("/dashboard");
+      }
       else setStep(next);
     } catch (e) {
       setErr((e as Error).message);
@@ -96,7 +101,7 @@ export default function Onboarding() {
         <ol className="flex gap-2 mb-8">
           {STEPS.map((s, i) => (
             <li key={s} className="flex-1">
-              <div className={`h-2 rounded-full border-2 border-ink ${i <= step ? "bg-accent" : "bg-white"}`} />
+              <div className={`h-1.5 rounded-full transition-colors ${i <= step ? "bg-ink" : "bg-[#dcdbd6]"}`} />
               <p className={`text-xs mt-2 ${i === step ? "text-ink font-medium" : "text-muted"}`}>{s}</p>
             </li>
           ))}
@@ -117,7 +122,7 @@ export default function Onboarding() {
                   const f = e.dataTransfer.files?.[0];
                   if (f) upload(f);
                 }}
-                className="cursor-pointer rounded-2xl border-2 border-dashed border-ink/40 hover:border-ink hover:bg-zest/30 bg-paper p-10 text-center transition"
+                className="cursor-pointer rounded-[24px] border-2 border-dashed border-[#d6d5d0] hover:border-ink/40 hover:bg-card bg-paper p-10 text-center transition-colors"
               >
                 {uploading ? (
                   <p className="text-muted">Reading your CV…</p>

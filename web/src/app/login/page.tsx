@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { Logo } from "@/components/Shell";
+import { savePendingRole } from "@/lib/pending-role";
 
 /** Always send people back to the main app address, even if they opened a deployment-specific URL. */
 function appOrigin() {
@@ -14,6 +15,7 @@ function appOrigin() {
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
+  const role = params.get("role");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [sent, setSent] = useState(false);
@@ -21,6 +23,10 @@ function LoginInner() {
   const [err, setErr] = useState<string | null>(
     params.get("expired") ? "That sign-in link has expired or was already used. Get a new one below — or use the code from the email." : null
   );
+
+  useEffect(() => {
+    savePendingRole(role);
+  }, [role]);
 
   useEffect(() => {
     const sb = supabaseBrowser();
@@ -54,12 +60,11 @@ function LoginInner() {
 
   return (
     <div
-      className="min-h-screen grid place-items-center px-4 bg-grape"
-      style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.18) 1.2px, transparent 1.4px)", backgroundSize: "22px 22px" }}
+      className="min-h-screen grid place-items-center px-4"
     >
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8"><Logo light /></div>
-        <div className="card p-7">
+        <div className="text-center mb-8"><Logo /></div>
+        <div className="card p-8 shadow-[0_24px_60px_-30px_rgba(29,29,31,0.25)]">
           {sent ? (
             <form onSubmit={verify} className="space-y-4">
               <div>
@@ -87,11 +92,18 @@ function LoginInner() {
           ) : (
             <form onSubmit={send} className="space-y-4">
               <div>
-                <p className="display text-3xl mb-1">Sign in</p>
-                <p className="text-sm text-muted">No password. We’ll email you a link and a code.</p>
+                <p className="display text-3xl mb-2">{role ? "Start your hunt" : "Sign in"}</p>
+                <p className="text-sm text-muted leading-relaxed">
+                  {role ? (
+                    <>Sign in, or create a free account, to start hunting for <b className="text-ink">{role}</b> roles. </>
+                  ) : (
+                    <>New here? The same email creates your account. </>
+                  )}
+                  No password needed: we’ll email you a link and a code.
+                </p>
               </div>
               <input className="input" type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <button className="btn-primary w-full" disabled={busy}>{busy ? "Sending…" : "Email me a sign-in link"}</button>
+              <button className="btn-primary w-full" disabled={busy}>{busy ? "Sending…" : "Continue with email"}</button>
               {err && <p className="text-sm text-rose">{err}</p>}
             </form>
           )}
