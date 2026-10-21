@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AuthLinkErrors from "@/components/AuthLinkErrors";
 
 export const metadata: Metadata = {
   title: "Apply.ai: job hunting, minus the doomscrolling",
@@ -17,7 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&display=swap"
         />
       </head>
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        <AuthLinkErrors />
+        {children}
+      </body>
     </html>
   );
 }
