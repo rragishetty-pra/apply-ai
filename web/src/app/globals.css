@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+
+  --color-paper: #f7f5f0;
+  --color-card: #ffffff;
+  --color-ink: #1b1d1f;
+  --color-muted: #5f6368;
+  --color-line: #e4e0d6;
+  --color-accent: #1f6f5c;       /* deep green: "go" */
+  --color-accent-soft: #e3f0ea;
+  --color-amber: #b26b00;
+  --color-amber-soft: #fbf0dc;
+  --color-rose: #a33b3b;
+  --color-rose-soft: #f8e4e2;
+}
+
+html, body { background: var(--color-paper); color: var(--color-ink); }
+body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+@utility card { @apply bg-card border border-line rounded-2xl; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed; }
+@utility btn-primary { @apply btn bg-ink text-white hover:bg-black; }
+@utility btn-accent { @apply btn bg-accent text-white hover:brightness-110; }
+@utility btn-ghost { @apply btn border border-line bg-card hover:bg-paper; }
+@utility input { @apply w-full rounded-xl border border-line bg-card px-3.5 py-2.5 text-sm outline-none focus:border-ink/40 focus:ring-4 focus:ring-ink/5; }
+@utility label { @apply block text-sm font-medium mb-1.5; }
+@utility hint { @apply text-xs text-muted mt-1; }
+@utility chip { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium; }
+@utility serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }

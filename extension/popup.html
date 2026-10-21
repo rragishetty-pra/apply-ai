@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    :root { --ink:#1b1d1f; --muted:#5f6368; --line:#e4e0d6; --paper:#f7f5f0; --accent:#1f6f5c; --amber:#b26b00; }
+    * { box-sizing: border-box; }
+    body { width: 340px; margin: 0; font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--paper); }
+    header { display:flex; justify-content:space-between; align-items:baseline; padding: 14px 16px 10px; }
+    .logo { font: 22px Georgia, serif; } .logo b { color: var(--accent); font-family: system-ui; }
+    .status { font-size: 12px; color: var(--muted); }
+    main { padding: 0 16px 16px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; }
+    button { width:100%; border:0; border-radius:10px; padding:9px 12px; font: 500 13px system-ui; cursor:pointer; margin-top:6px; }
+    .primary { background: var(--ink); color:#fff; } .accent { background: var(--accent); color:#fff; }
+    .ghost { background:#fff; border:1px solid var(--line); color: var(--ink); }
+    button:disabled { opacity:.5; cursor:default; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .bar { height:4px; background: var(--line); border-radius:4px; overflow:hidden; margin-top:8px; }
+    .bar i { display:block; height:100%; background: var(--accent); width:0; transition: width .3s; }
+    pre { margin:0; max-height:150px; overflow:auto; white-space:pre-wrap; font: 11px/1.4 ui-monospace, Menlo, monospace; color: var(--muted); }
+    .row { display:flex; gap:6px; } .row button { flex:1; }
+    .err { color:#a33b3b; font-size:12px; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">Apply<b>.ai</b></span>
+    <span id="status" class="status">…</span>
+  </header>
+  <main>
+    <div id="notPaired" class="card" hidden>
+      <p style="margin:0 0 6px"><b>Not connected yet.</b></p>
+      <p class="muted" style="margin:0">Open Apply.ai, sign in, and click “Connect extension”.</p>
+      <button class="primary" id="openApp1">Open Apply.ai</button>
+    </div>
+
+    <div id="paired" hidden>
+      <div class="card">
+        <div id="progress" class="muted">Idle.</div>
+        <div class="bar"><i id="barFill"></i></div>
+        <button class="primary" id="run">Run Hunter now</button>
+        <button class="ghost" id="stop" hidden>Stop</button>
+      </div>
+      <div class="card">
+        <p style="margin:0 0 4px"><b>On a job page from another site?</b></p>
+        <p class="muted" style="margin:0">Add it and Tailor will score it and tailor your CV.</p>
+        <button class="accent" id="capture">Add this job</button>
+        <div id="captureMsg" class="muted"></div>
+      </div>
+      <div class="row">
+        <button class="ghost" id="checkLogins">Check sign-ins</button>
+        <button class="ghost" id="openApp2">Dashboard</button>
+      </div>
+      <div class="card" style="margin-top:10px"><pre id="log"></pre></div>
+      <div id="err" class="err"></div>
+    </div>
+  </main>
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
