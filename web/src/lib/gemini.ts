@@ -11,13 +11,23 @@ import { HttpError } from "./auth";
 export class AIServiceError extends HttpError {} // a problem with the AI service, not with a job
 
 const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+// Cheaper, faster model for first-pass scoring. Falls back to the main model if none is available.
+const LITE_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"];
 let workingModel: string | null = null;
+let workingLite: string | null = null;
 
-export async function askJSON<T>(prompt: string, opts: { temperature?: number; maxTokens?: number } = {}): Promise<T> {
+export async function askJSON<T>(
+  prompt: string,
+  opts: { temperature?: number; maxTokens?: number; tier?: "lite" | "main" } = {}
+): Promise<T> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AIServiceError(500, "GEMINI_API_KEY is not set on the server.");
 
-  const candidates = [...new Set([workingModel, process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean) as string[])];
+  const lite = opts.tier === "lite";
+  const main = [workingModel, process.env.GEMINI_MODEL, ...FALLBACK_MODELS];
+  const candidates = [
+    ...new Set((lite ? [workingLite, process.env.GEMINI_LITE_MODEL, ...LITE_MODELS, ...main] : main).filter(Boolean) as string[]),
+  ];
   let lastError = "";
 
   for (const model of candidates) {
@@ -39,6 +49,7 @@ export async function askJSON<T>(prompt: string, opts: { temperature?: number; m
       // Model retired or unknown → try the next one
       lastError = `model ${model} is not available`;
       if (workingModel === model) workingModel = null;
+      if (workingLite === model) workingLite = null;
       continue;
     }
     if (res.status === 429) {
@@ -49,7 +60,8 @@ export async function askJSON<T>(prompt: string, opts: { temperature?: number; m
       throw new AIServiceError(502, `The AI service had a problem (${res.status}). Try again in a few minutes. ${body.slice(0, 160)}`);
     }
 
-    workingModel = model;
+    if (lite && (LITE_MODELS.includes(model) || model === process.env.GEMINI_LITE_MODEL)) workingLite = model;
+    else workingModel = model;
     const data = await res.json();
     const text: string =
       data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") ?? "";

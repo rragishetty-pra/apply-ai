@@ -167,7 +167,7 @@ export default function Onboarding() {
               <p className="text-muted mb-8">
                 Hunter searches the job portals from your own Chrome, where you’re already signed in. This keeps your passwords private and your accounts safe.
               </p>
-              <ExtensionConnect initialStatus={portalStatus} />
+              <ExtensionConnect initialStatus={portalStatus} portals={prefs.portals} />
               <div className="mt-8 flex justify-between">
                 <button className="btn-ghost" onClick={() => setStep(1)}>Back</button>
                 <button className="btn-primary" onClick={() => setStep(3)}>Continue</button>

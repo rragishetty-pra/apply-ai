@@ -5,6 +5,7 @@ import { useAuth } from "@/components/useAuth";
 import Shell from "@/components/Shell";
 import PrefsForm from "@/components/PrefsForm";
 import ExtensionConnect from "@/components/ExtensionConnect";
+import CompaniesCard from "@/components/CompaniesCard";
 import { mergePrefs, type Prefs } from "@/lib/types";
 
 export default function Settings() {
@@ -78,9 +79,10 @@ export default function Settings() {
             <button className="btn-ghost w-full" onClick={() => fileRef.current?.click()}>Replace CV</button>
             <input ref={fileRef} type="file" accept=".docx,.pdf" hidden onChange={(e) => e.target.files?.[0] && replaceCv(e.target.files[0])} />
           </div>
+          <CompaniesCard />
           <div className="card p-6">
             <p className="display text-2xl mb-4">Chrome extension</p>
-            <ExtensionConnect initialStatus={portalStatus} compact />
+            <ExtensionConnect initialStatus={portalStatus} portals={prefs.portals} compact />
             <button className="text-sm text-rose mt-5" onClick={disconnect}>Disconnect all extensions</button>
           </div>
         </div>

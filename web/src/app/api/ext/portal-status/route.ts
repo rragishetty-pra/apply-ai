@@ -1,5 +1,6 @@
 import { handle, json, preflight, requireExtension } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { PORTAL_IDS } from "@/lib/portal-list";
 
 export const OPTIONS = preflight;
 
@@ -9,7 +10,7 @@ export const POST = handle(async (req) => {
   const body = await req.json();
   const status: Record<string, string> = {};
   for (const [k, v] of Object.entries(body.status || {})) {
-    if (["linkedin", "naukri", "indeed"].includes(k) && typeof v === "string") status[k] = v.slice(0, 20);
+    if (PORTAL_IDS.includes(k) && typeof v === "string") status[k] = v.slice(0, 20);
   }
   const db = supabaseAdmin();
   const { data } = await db.from("profiles").select("portal_status").eq("id", user.id).single();

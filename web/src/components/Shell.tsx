@@ -25,10 +25,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className=" bg-paper/90 backdrop-blur sticky top-0 z-20">
-        <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
-          <Link href="/dashboard"><Logo /></Link>
-          <nav className="flex items-center gap-1 overflow-x-auto">
+        <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between gap-3">
+          <Link href="/dashboard" className="shrink-0"><Logo /></Link>
+          <nav className="flex items-center gap-1 overflow-x-auto min-w-0 -mr-4 pr-4">
             {link("/dashboard", "Dashboard")}
+            {link("/network", "Network")}
             {link("/coach", "Coach")}
             {link("/achievements", "Achievements")}
             {link("/settings", "Settings")}

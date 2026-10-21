@@ -1,0 +1,2022 @@
+[
+{
+"name": "Tata Consultancy Services",
+"industry": "IT services & consulting"
+},
+{
+"name": "Infosys",
+"industry": "IT services & consulting"
+},
+{
+"name": "Wipro",
+"industry": "IT services & consulting"
+},
+{
+"name": "HCLTech",
+"industry": "IT services & consulting"
+},
+{
+"name": "Tech Mahindra",
+"industry": "IT services & consulting"
+},
+{
+"name": "LTIMindtree",
+"industry": "IT services & consulting"
+},
+{
+"name": "Cognizant",
+"industry": "IT services & consulting"
+},
+{
+"name": "Accenture",
+"industry": "IT services & consulting"
+},
+{
+"name": "Capgemini",
+"industry": "IT services & consulting"
+},
+{
+"name": "IBM",
+"industry": "IT services & consulting"
+},
+{
+"name": "DXC Technology",
+"industry": "IT services & consulting"
+},
+{
+"name": "NTT DATA",
+"industry": "IT services & consulting"
+},
+{
+"name": "Mphasis",
+"industry": "IT services & consulting"
+},
+{
+"name": "Hexaware Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Persistent Systems",
+"industry": "IT services & consulting"
+},
+{
+"name": "Coforge",
+"industry": "IT services & consulting"
+},
+{
+"name": "Zensar Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Birlasoft",
+"industry": "IT services & consulting"
+},
+{
+"name": "Sonata Software",
+"industry": "IT services & consulting"
+},
+{
+"name": "Mastek",
+"industry": "IT services & consulting"
+},
+{
+"name": "Cyient",
+"industry": "IT services & consulting"
+},
+{
+"name": "KPIT Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Tata Elxsi",
+"industry": "IT services & consulting"
+},
+{
+"name": "L&T Technology Services",
+"industry": "IT services & consulting"
+},
+{
+"name": "Happiest Minds Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Virtusa",
+"industry": "IT services & consulting"
+},
+{
+"name": "UST",
+"industry": "IT services & consulting"
+},
+{
+"name": "EPAM Systems",
+"industry": "IT services & consulting"
+},
+{
+"name": "Globant",
+"industry": "IT services & consulting"
+},
+{
+"name": "Publicis Sapient",
+"industry": "IT services & consulting"
+},
+{
+"name": "Thoughtworks",
+"industry": "IT services & consulting"
+},
+{
+"name": "Nagarro",
+"industry": "IT services & consulting"
+},
+{
+"name": "Infogain",
+"industry": "IT services & consulting"
+},
+{
+"name": "Kyndryl",
+"industry": "IT services & consulting"
+},
+{
+"name": "Atos",
+"industry": "IT services & consulting"
+},
+{
+"name": "Sopra Steria",
+"industry": "IT services & consulting"
+},
+{
+"name": "CGI",
+"industry": "IT services & consulting"
+},
+{
+"name": "Fujitsu",
+"industry": "IT services & consulting"
+},
+{
+"name": "Movate",
+"industry": "IT services & consulting"
+},
+{
+"name": "Sasken Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Wissen Technology",
+"industry": "IT services & consulting"
+},
+{
+"name": "ValueLabs",
+"industry": "IT services & consulting"
+},
+{
+"name": "Ness Digital Engineering",
+"industry": "IT services & consulting"
+},
+{
+"name": "Iris Software",
+"industry": "IT services & consulting"
+},
+{
+"name": "R Systems",
+"industry": "IT services & consulting"
+},
+{
+"name": "Datamatics",
+"industry": "IT services & consulting"
+},
+{
+"name": "Kellton",
+"industry": "IT services & consulting"
+},
+{
+"name": "Brillio",
+"industry": "IT services & consulting"
+},
+{
+"name": "Altimetrik",
+"industry": "IT services & consulting"
+},
+{
+"name": "Synechron",
+"industry": "IT services & consulting"
+},
+{
+"name": "Ascendion",
+"industry": "IT services & consulting"
+},
+{
+"name": "Innova Solutions",
+"industry": "IT services & consulting"
+},
+{
+"name": "Photon",
+"industry": "IT services & consulting"
+},
+{
+"name": "YASH Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Saksoft",
+"industry": "IT services & consulting"
+},
+{
+"name": "Trigent Software",
+"industry": "IT services & consulting"
+},
+{
+"name": "HTC Global Services",
+"industry": "IT services & consulting"
+},
+{
+"name": "Apexon",
+"industry": "IT services & consulting"
+},
+{
+"name": "Qentelli",
+"industry": "IT services & consulting"
+},
+{
+"name": "Qualitest",
+"industry": "IT services & consulting"
+},
+{
+"name": "Cigniti Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Indium Software",
+"industry": "IT services & consulting"
+},
+{
+"name": "TestingXperts",
+"industry": "IT services & consulting"
+},
+{
+"name": "ValueMomentum",
+"industry": "IT services & consulting"
+},
+{
+"name": "Mindsprint",
+"industry": "IT services & consulting"
+},
+{
+"name": "Intellect Design Arena",
+"industry": "IT services & consulting"
+},
+{
+"name": "Newgen Software",
+"industry": "IT services & consulting"
+},
+{
+"name": "Ramco Systems",
+"industry": "IT services & consulting"
+},
+{
+"name": "Tata Technologies",
+"industry": "IT services & consulting"
+},
+{
+"name": "Hinduja Global Solutions",
+"industry": "IT services & consulting"
+},
+{
+"name": "Firstsource",
+"industry": "IT services & consulting"
+},
+{
+"name": "Startek",
+"industry": "IT services & consulting"
+},
+{
+"name": "Google",
+"industry": "Product & internet"
+},
+{
+"name": "Microsoft",
+"industry": "Product & internet"
+},
+{
+"name": "Amazon",
+"industry": "Product & internet"
+},
+{
+"name": "Apple",
+"industry": "Product & internet"
+},
+{
+"name": "Oracle",
+"industry": "Product & internet"
+},
+{
+"name": "SAP Labs India",
+"industry": "Product & internet"
+},
+{
+"name": "Salesforce",
+"industry": "Product & internet"
+},
+{
+"name": "Adobe",
+"industry": "Product & internet"
+},
+{
+"name": "Intuit",
+"industry": "Product & internet"
+},
+{
+"name": "Cisco",
+"industry": "Product & internet"
+},
+{
+"name": "Broadcom",
+"industry": "Product & internet"
+},
+{
+"name": "ServiceNow",
+"industry": "Product & internet"
+},
+{
+"name": "Atlassian",
+"industry": "Product & internet"
+},
+{
+"name": "Uber",
+"industry": "Product & internet"
+},
+{
+"name": "LinkedIn",
+"industry": "Product & internet"
+},
+{
+"name": "Walmart Global Tech India",
+"industry": "Product & internet"
+},
+{
+"name": "Flipkart",
+"industry": "Product & internet"
+},
+{
+"name": "Swiggy",
+"industry": "Product & internet"
+},
+{
+"name": "Zomato",
+"industry": "Product & internet"
+},
+{
+"name": "Paytm",
+"industry": "Product & internet"
+},
+{
+"name": "PhonePe",
+"industry": "Product & internet"
+},
+{
+"name": "Razorpay",
+"industry": "Product & internet"
+},
+{
+"name": "CRED",
+"industry": "Product & internet"
+},
+{
+"name": "Freshworks",
+"industry": "Product & internet"
+},
+{
+"name": "Zoho",
+"industry": "Product & internet"
+},
+{
+"name": "InMobi",
+"industry": "Product & internet"
+},
+{
+"name": "ShareChat",
+"industry": "Product & internet"
+},
+{
+"name": "Meesho",
+"industry": "Product & internet"
+},
+{
+"name": "Myntra",
+"industry": "Product & internet"
+},
+{
+"name": "Nykaa",
+"industry": "Product & internet"
+},
+{
+"name": "Ola",
+"industry": "Product & internet"
+},
+{
+"name": "Dream11",
+"industry": "Product & internet"
+},
+{
+"name": "Groww",
+"industry": "Product & internet"
+},
+{
+"name": "upGrad",
+"industry": "Product & internet"
+},
+{
+"name": "PhysicsWallah",
+"industry": "Product & internet"
+},
+{
+"name": "MakeMyTrip",
+"industry": "Product & internet"
+},
+{
+"name": "Zeta",
+"industry": "Product & internet"
+},
+{
+"name": "BrowserStack",
+"industry": "Product & internet"
+},
+{
+"name": "Postman",
+"industry": "Product & internet"
+},
+{
+"name": "Chargebee",
+"industry": "Product & internet"
+},
+{
+"name": "Druva",
+"industry": "Product & internet"
+},
+{
+"name": "Innovaccer",
+"industry": "Product & internet"
+},
+{
+"name": "Icertis",
+"industry": "Product & internet"
+},
+{
+"name": "Darwinbox",
+"industry": "Product & internet"
+},
+{
+"name": "Amagi",
+"industry": "Product & internet"
+},
+{
+"name": "MoEngage",
+"industry": "Product & internet"
+},
+{
+"name": "Sprinklr",
+"industry": "Product & internet"
+},
+{
+"name": "Whatfix",
+"industry": "Product & internet"
+},
+{
+"name": "Rippling",
+"industry": "Product & internet"
+},
+{
+"name": "Atlan",
+"industry": "Product & internet"
+},
+{
+"name": "Databricks",
+"industry": "Product & internet"
+},
+{
+"name": "Snowflake",
+"industry": "Product & internet"
+},
+{
+"name": "Informatica",
+"industry": "Product & internet"
+},
+{
+"name": "Teradata",
+"industry": "Product & internet"
+},
+{
+"name": "Cloudera",
+"industry": "Product & internet"
+},
+{
+"name": "Qualys",
+"industry": "Product & internet"
+},
+{
+"name": "Palo Alto Networks",
+"industry": "Product & internet"
+},
+{
+"name": "Nutanix",
+"industry": "Product & internet"
+},
+{
+"name": "NetApp",
+"industry": "Product & internet"
+},
+{
+"name": "Workday",
+"industry": "Product & internet"
+},
+{
+"name": "Autodesk",
+"industry": "Product & internet"
+},
+{
+"name": "PTC",
+"industry": "Product & internet"
+},
+{
+"name": "Expedia Group",
+"industry": "Product & internet"
+},
+{
+"name": "Zscaler",
+"industry": "Product & internet"
+},
+{
+"name": "Okta",
+"industry": "Product & internet"
+},
+{
+"name": "Twilio",
+"industry": "Product & internet"
+},
+{
+"name": "Amdocs",
+"industry": "Product & internet"
+},
+{
+"name": "Rubrik",
+"industry": "Product & internet"
+},
+{
+"name": "Commvault",
+"industry": "Product & internet"
+},
+{
+"name": "Pine Labs",
+"industry": "Product & internet"
+},
+{
+"name": "Juspay",
+"industry": "Product & internet"
+},
+{
+"name": "Slice",
+"industry": "Product & internet"
+},
+{
+"name": "Navi",
+"industry": "Product & internet"
+},
+{
+"name": "Zepto",
+"industry": "Product & internet"
+},
+{
+"name": "Blinkit",
+"industry": "Product & internet"
+},
+{
+"name": "BigBasket",
+"industry": "Product & internet"
+},
+{
+"name": "Urban Company",
+"industry": "Product & internet"
+},
+{
+"name": "OYO",
+"industry": "Product & internet"
+},
+{
+"name": "Delhivery",
+"industry": "Product & internet"
+},
+{
+"name": "Info Edge",
+"industry": "Product & internet"
+},
+{
+"name": "Policybazaar",
+"industry": "Product & internet"
+},
+{
+"name": "Lenskart",
+"industry": "Product & internet"
+},
+{
+"name": "Unacademy",
+"industry": "Product & internet"
+},
+{
+"name": "Hasura",
+"industry": "Product & internet"
+},
+{
+"name": "Gupshup",
+"industry": "Product & internet"
+},
+{
+"name": "Yellow.ai",
+"industry": "Product & internet"
+},
+{
+"name": "Uniphore",
+"industry": "Product & internet"
+},
+{
+"name": "Tekion",
+"industry": "Product & internet"
+},
+{
+"name": "Mindtickle",
+"industry": "Product & internet"
+},
+{
+"name": "LeadSquared",
+"industry": "Product & internet"
+},
+{
+"name": "Capillary Technologies",
+"industry": "Product & internet"
+},
+{
+"name": "Kaleyra",
+"industry": "Product & internet"
+},
+{
+"name": "Exotel",
+"industry": "Product & internet"
+},
+{
+"name": "Ather Energy",
+"industry": "Product & internet"
+},
+{
+"name": "JPMorgan Chase",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Goldman Sachs",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Morgan Stanley",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Citi",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Bank of America",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Wells Fargo",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Barclays",
+"industry": "Global banks & financial services"
+},
+{
+"name": "HSBC",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Deutsche Bank",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Standard Chartered",
+"industry": "Global banks & financial services"
+},
+{
+"name": "UBS",
+"industry": "Global banks & financial services"
+},
+{
+"name": "BNY",
+"industry": "Global banks & financial services"
+},
+{
+"name": "State Street",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Northern Trust",
+"industry": "Global banks & financial services"
+},
+{
+"name": "BlackRock",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Fidelity Investments",
+"industry": "Global banks & financial services"
+},
+{
+"name": "American Express",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Mastercard",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Visa",
+"industry": "Global banks & financial services"
+},
+{
+"name": "PayPal",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Fiserv",
+"industry": "Global banks & financial services"
+},
+{
+"name": "FIS",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Broadridge",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Synchrony",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Lloyds Banking Group",
+"industry": "Global banks & financial services"
+},
+{
+"name": "NatWest Group",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Société Générale",
+"industry": "Global banks & financial services"
+},
+{
+"name": "BNP Paribas",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Nomura",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Macquarie",
+"industry": "Global banks & financial services"
+},
+{
+"name": "London Stock Exchange Group",
+"industry": "Global banks & financial services"
+},
+{
+"name": "S&P Global",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Moody's",
+"industry": "Global banks & financial services"
+},
+{
+"name": "MSCI",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Morningstar",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Experian",
+"industry": "Global banks & financial services"
+},
+{
+"name": "TransUnion",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Equifax",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Ameriprise Financial",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Principal Global Services",
+"industry": "Global banks & financial services"
+},
+{
+"name": "MetLife",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Chubb",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Swiss Re",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Charles Schwab",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Capital One",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Invesco",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Franklin Templeton",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Citizens Financial Group",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Truist",
+"industry": "Global banks & financial services"
+},
+{
+"name": "US Bank",
+"industry": "Global banks & financial services"
+},
+{
+"name": "ANZ",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Standard Bank",
+"industry": "Global banks & financial services"
+},
+{
+"name": "DBS Tech India",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Mizuho",
+"industry": "Global banks & financial services"
+},
+{
+"name": "MUFG",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Wells Fargo International Solutions",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Bread Financial",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Discover Financial Services",
+"industry": "Global banks & financial services"
+},
+{
+"name": "Northern Arc",
+"industry": "Global banks & financial services"
+},
+{
+"name": "HDFC Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "ICICI Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Axis Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Kotak Mahindra Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "State Bank of India",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "IndusInd Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Yes Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "IDFC FIRST Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Bandhan Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Federal Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "RBL Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "AU Small Finance Bank",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Bajaj Finance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Bajaj Finserv",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Tata Capital",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Aditya Birla Capital",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Mahindra Finance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Shriram Finance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Muthoot Finance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "L&T Finance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "HDFC Life",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "ICICI Prudential Life Insurance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "SBI Life Insurance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Axis Max Life Insurance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "ICICI Lombard",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Bajaj General Insurance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Star Health Insurance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "National Stock Exchange of India",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "CRISIL",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "CAMS",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "KFintech",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Jio Financial Services",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "HDFC Asset Management",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "SBI Card",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Poonawalla Fincorp",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Cholamandalam Investment and Finance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Edelweiss",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Motilal Oswal",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Angel One",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Zerodha",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Kotak Securities",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Tata AIA Life Insurance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Go Digit Insurance",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Acko",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "PB Fintech",
+"industry": "Indian banks, NBFCs & insurance"
+},
+{
+"name": "Deloitte",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "PwC",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "EY",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "KPMG",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "McKinsey & Company",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Boston Consulting Group",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Bain & Company",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Grant Thornton Bharat",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Genpact",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "EXL",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "WNS",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Concentrix",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "ZS Associates",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Gartner",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Alvarez & Marsal",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Kearney",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Protiviti",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "BDO India",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "RSM India",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Teleperformance",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Sutherland",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "TaskUs",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Conduent",
+"industry": "Consulting & Big Four"
+},
+{
+"name": "Mu Sigma",
+"industry": "Analytics & data"
+},
+{
+"name": "Fractal",
+"industry": "Analytics & data"
+},
+{
+"name": "LatentView Analytics",
+"industry": "Analytics & data"
+},
+{
+"name": "Tredence",
+"industry": "Analytics & data"
+},
+{
+"name": "Quantiphi",
+"industry": "Analytics & data"
+},
+{
+"name": "Tiger Analytics",
+"industry": "Analytics & data"
+},
+{
+"name": "Course5 Intelligence",
+"industry": "Analytics & data"
+},
+{
+"name": "Sigmoid",
+"industry": "Analytics & data"
+},
+{
+"name": "Affine",
+"industry": "Analytics & data"
+},
+{
+"name": "Merkle",
+"industry": "Analytics & data"
+},
+{
+"name": "dunnhumby",
+"industry": "Analytics & data"
+},
+{
+"name": "NielsenIQ",
+"industry": "Analytics & data"
+},
+{
+"name": "Evalueserve",
+"industry": "Analytics & data"
+},
+{
+"name": "Axtria",
+"industry": "Analytics & data"
+},
+{
+"name": "MathCo",
+"industry": "Analytics & data"
+},
+{
+"name": "Gramener",
+"industry": "Analytics & data"
+},
+{
+"name": "Kantar",
+"industry": "Analytics & data"
+},
+{
+"name": "Ipsos",
+"industry": "Analytics & data"
+},
+{
+"name": "Circana",
+"industry": "Analytics & data"
+},
+{
+"name": "Saama",
+"industry": "Analytics & data"
+},
+{
+"name": "Decision Point",
+"industry": "Analytics & data"
+},
+{
+"name": "Polestar Solutions",
+"industry": "Analytics & data"
+},
+{
+"name": "Hansa Cequity",
+"industry": "Analytics & data"
+},
+{
+"name": "Absolutdata",
+"industry": "Analytics & data"
+},
+{
+"name": "Sun Pharma",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Dr. Reddy's Laboratories",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Cipla",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Lupin",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Aurobindo Pharma",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Zydus Lifesciences",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Biocon",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Glenmark Pharmaceuticals",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Divi's Laboratories",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Torrent Pharmaceuticals",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Apollo Hospitals",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Fortis Healthcare",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Manipal Hospitals",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Narayana Health",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Max Healthcare",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Novartis",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Pfizer",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "GSK",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "AstraZeneca",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Sanofi",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Abbott",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Johnson & Johnson",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Philips",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "GE HealthCare",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Siemens Healthineers",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Optum",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "IQVIA",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Parexel",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Medtronic",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Thermo Fisher Scientific",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Novo Nordisk",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Eli Lilly",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Amgen",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Bristol Myers Squibb",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "CitiusTech",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Elevance Health",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Cigna",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "McKesson",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Labcorp",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Syngene",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Mankind Pharma",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Alkem Laboratories",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Intas Pharmaceuticals",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Piramal Pharma",
+"industry": "Healthcare & pharma"
+},
+{
+"name": "Reliance Jio",
+"industry": "Telecom & media"
+},
+{
+"name": "Bharti Airtel",
+"industry": "Telecom & media"
+},
+{
+"name": "Vodafone Idea",
+"industry": "Telecom & media"
+},
+{
+"name": "Ericsson",
+"industry": "Telecom & media"
+},
+{
+"name": "Nokia",
+"industry": "Telecom & media"
+},
+{
+"name": "Samsung R&D India",
+"industry": "Telecom & media"
+},
+{
+"name": "Tata Communications",
+"industry": "Telecom & media"
+},
+{
+"name": "JioStar",
+"industry": "Telecom & media"
+},
+{
+"name": "Zee Entertainment",
+"industry": "Telecom & media"
+},
+{
+"name": "Times Internet",
+"industry": "Telecom & media"
+},
+{
+"name": "Ciena",
+"industry": "Telecom & media"
+},
+{
+"name": "Sterlite Technologies",
+"industry": "Telecom & media"
+},
+{
+"name": "HFCL",
+"industry": "Telecom & media"
+},
+{
+"name": "Tejas Networks",
+"industry": "Telecom & media"
+},
+{
+"name": "Viavi Solutions",
+"industry": "Telecom & media"
+},
+{
+"name": "Comcast",
+"industry": "Telecom & media"
+},
+{
+"name": "Warner Bros. Discovery",
+"industry": "Telecom & media"
+},
+{
+"name": "Sony Pictures Networks India",
+"industry": "Telecom & media"
+},
+{
+"name": "Network18",
+"industry": "Telecom & media"
+},
+{
+"name": "Hindustan Unilever",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "ITC",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Nestlé India",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Procter & Gamble",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Dabur",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Marico",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Godrej Consumer Products",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Britannia Industries",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Tata Consumer Products",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Asian Paints",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Pidilite Industries",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Reliance Retail",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Tata Digital",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Avenue Supermarts",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Trent",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Aditya Birla Fashion and Retail",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Titan Company",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Target",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Tesco",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Lowe's",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "The Home Depot",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "PepsiCo",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Coca-Cola",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Mondelez International",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Colgate-Palmolive",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "L'Oréal",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Diageo India",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "AB InBev",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "7-Eleven",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Kenvue",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Unilever",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "IKEA",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "H&M",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Decathlon",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Shoppers Stop",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Bata India",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Jubilant FoodWorks",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Varun Beverages",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Emami",
+"industry": "Retail, FMCG & e-commerce"
+},
+{
+"name": "Reliance Industries",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Tata Steel",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Tata Motors",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Mahindra & Mahindra",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Maruti Suzuki",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Bajaj Auto",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Hero MotoCorp",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "TVS Motor Company",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Ashok Leyland",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Eicher Motors",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Larsen & Toubro",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Adani Group",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "JSW Steel",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Hindalco",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Vedanta",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "UltraTech Cement",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "ONGC",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Indian Oil",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Bharat Petroleum",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "NTPC",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Power Grid",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Tata Power",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Siemens",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "ABB",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Bosch",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Schneider Electric",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Honeywell",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "GE Aerospace",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Shell",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "BP",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Caterpillar",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "John Deere",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Cummins",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Volvo Group",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Mercedes-Benz Research and Development India",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Continental",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Airbus",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Boeing",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Rolls-Royce",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Hyundai Motor India",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Toyota Kirloskar Motor",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Daimler Truck",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Hitachi Energy",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Emerson",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Rockwell Automation",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Eaton",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Danfoss",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Saint-Gobain",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "3M",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Hindustan Aeronautics",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Bharat Electronics",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Godrej & Boyce",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Tata Projects",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Adani Green Energy",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "ReNew",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Suzlon",
+"industry": "Manufacturing, auto & energy"
+},
+{
+"name": "Intel",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Qualcomm",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Texas Instruments",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "NVIDIA",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "AMD",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Micron Technology",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Applied Materials",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Synopsys",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Cadence Design Systems",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "NXP Semiconductors",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Infineon Technologies",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Analog Devices",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Microchip Technology",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Marvell Technology",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Western Digital",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Tata Electronics",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "HP",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Dell Technologies",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Hewlett Packard Enterprise",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Lenovo",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Arm",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Lam Research",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "KLA",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "MediaTek",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Renesas",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "STMicroelectronics",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Siemens EDA",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Keysight Technologies",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Seagate",
+"industry": "Semiconductors & hardware"
+},
+{
+"name": "Juniper Networks",
+"industry": "Semiconductors & hardware"
+}
+]

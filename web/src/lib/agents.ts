@@ -128,3 +128,41 @@ ${cvBlock.slice(0, 20000)}
 }
 
 export { vetEdits } from "./vet";
+
+/* ─────────────── Tailor step 1: quick score on the cheaper model ─────────────── */
+
+/**
+ * Every job gets this fast, cheap score first. Only jobs that look like a match (or are close)
+ * go on to the full Tailor step, which re-scores on the main model and rewrites the CV.
+ */
+export async function quickScore(
+  profile: Profile,
+  prefs: Prefs,
+  job: { title: string | null; company: string | null; location: string | null; description: string | null },
+  achievements = "none listed"
+): Promise<Analysis> {
+  return askJSON<Analysis>(
+    `Score how well this candidate fits the job. Be fair and realistic.
+- match_percent: 0–100, how much of the job's real requirements the CV covers. A job can still be a match with
+  a few must-haves missing (e.g. 3 of 5).
+- verdict: "match" if match_percent >= ${prefs.match_threshold}; "stretch" if roughly ${Math.max(prefs.match_threshold - 20, 30)}–${prefs.match_threshold - 1}
+  and reachable by learning a few skills; otherwise "skip".
+- matched: requirements the CV or achievements clearly meet.
+- gaps: requirements not shown, as short skill/tool/experience names (1–4 words each).
+- key_gaps: for "stretch" only, the 1–3 gaps that would most likely get them the job.
+- must_haves_met: like "3 of 5". summary: one plain sentence. skip_reason: only for "skip".
+Return ONLY JSON: {match_percent, verdict, matched, gaps, key_gaps, must_haves_met, summary, skip_reason}
+
+JOB: ${job.title || ""} at ${job.company || ""} (${job.location || ""})
+"""
+${(job.description || "").slice(0, 8000)}
+"""
+ACHIEVEMENTS:
+${achievements}
+CV:
+"""
+${(profile.cv_text || "").slice(0, 10000)}
+"""`,
+    { temperature: 0.1, tier: "lite", maxTokens: 2048 }
+  );
+}

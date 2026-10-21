@@ -4,11 +4,7 @@ import { api } from "@/lib/supabase-browser";
 
 type LoginState = Record<string, string>;
 
-const PORTALS = [
-  { id: "naukri", name: "Naukri", login: "https://www.naukri.com/nlogin/login" },
-  { id: "linkedin", name: "LinkedIn", login: "https://www.linkedin.com/login" },
-  { id: "indeed", name: "Indeed", login: "https://secure.indeed.com/auth" },
-];
+import { DEFAULT_PORTALS, PORTALS as ALL_PORTALS } from "@/lib/portal-list";
 
 /** Talks to the Apply.ai Chrome extension through window.postMessage (its content script listens on this site). */
 export function ask<T>(type: string, payload: Record<string, unknown> = {}, timeoutMs = 90_000): Promise<T> {
@@ -51,7 +47,23 @@ export function useExtension() {
   return installed;
 }
 
-export default function ExtensionConnect({ initialStatus = {}, compact = false }: { initialStatus?: LoginState; compact?: boolean }) {
+export default function ExtensionConnect({
+  initialStatus = {},
+  compact = false,
+  portals: selected = DEFAULT_PORTALS,
+}: {
+  initialStatus?: LoginState;
+  compact?: boolean;
+  portals?: string[];
+}) {
+  // Every portal needs an account to apply, so list each one the user picked.
+  const PORTALS = ALL_PORTALS.filter((p) => selected.includes(p.id)).map((p) => ({
+    id: p.id,
+    name: p.name,
+    login: p.loginUrl || p.homeUrl || "#",
+    home: p.homeUrl,
+    login_pattern: p.loginPattern,
+  }));
   const installed = useExtension();
   const [paired, setPaired] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -81,13 +93,14 @@ export default function ExtensionConnect({ initialStatus = {}, compact = false }
     setErr(null);
     setBusy("logins");
     try {
-      setLogins(await ask<LoginState>("CHECK_LOGINS"));
+      const extra = PORTALS.filter((p) => p.home).map((p) => ({ id: p.id, home: p.home, login_pattern: p.login_pattern }));
+      setLogins(await ask<LoginState>("CHECK_LOGINS", { portals: extra }, 240_000));
     } catch (e) {
       setErr((e as Error).message);
     } finally {
       setBusy(null);
     }
-  }, []);
+  }, [PORTALS]);
 
   return (
     <div className="space-y-5">
@@ -109,10 +122,11 @@ export default function ExtensionConnect({ initialStatus = {}, compact = false }
           </button>
         </Step>
 
-        <Step n={3} done={PORTALS.some((p) => logins[p.id] === "ok")} title="Sign in to your job portals in this Chrome">
+        <Step n={3} done={PORTALS.length > 0 && PORTALS.every((p) => logins[p.id] === "ok")} title="Sign in to your job portals in this Chrome">
           {!compact && (
             <p className="text-sm text-muted mb-3">
-              Sign in the normal way — Apply.ai never sees or stores your passwords. Hunter uses your signed-in Chrome, just like you would.
+              You need an account on each portal to apply there. Sign in the normal way: Apply.ai never sees or stores your
+              passwords. Hunter uses your signed-in Chrome, just like you would.
             </p>
           )}
           <div className="flex flex-wrap gap-2 mb-3">
@@ -125,7 +139,10 @@ export default function ExtensionConnect({ initialStatus = {}, compact = false }
           <button className="btn-ghost" disabled={!paired || busy === "logins"} onClick={checkLogins}>
             {busy === "logins" ? "Checking (opens tabs briefly)…" : "Check my sign-ins"}
           </button>
-          <p className="hint">Indeed works without signing in; Naukri and LinkedIn show more jobs when you’re signed in.</p>
+          <p className="hint">
+            {PORTALS.filter((p) => logins[p.id] === "ok").length} of {PORTALS.length} signed in.
+            {PORTALS.some((p) => logins[p.id] === "unknown") ? " Grey dots mean we couldn't tell; open that portal to check." : ""}
+          </p>
         </Step>
       </ol>
       {err && <p className="text-sm text-rose">{err}</p>}
@@ -149,5 +166,6 @@ function Step({ n, done, title, children }: { n: number; done: boolean; title: s
 
 function StatusDot({ state }: { state?: string }) {
   const color = state === "ok" ? "bg-accent" : state === "login_needed" ? "bg-[#c4a067]" : "bg-[#cfcec9]";
+  // ok = signed in, login_needed = sign in, unknown/undefined = not checked yet
   return <span className={`h-2.5 w-2.5 rounded-full ${color}`} title={state === "ok" ? "Signed in" : state === "login_needed" ? "Sign-in needed" : "Not checked"} />;
 }

@@ -9,7 +9,8 @@ import { useExtension } from "@/components/ExtensionConnect";
 import { JobTicker } from "@/components/Trending";
 import type { TickerJob } from "@/lib/stats";
 import { clearPendingRole, readPendingRole, withRole } from "@/lib/pending-role";
-import type { Job, Prefs } from "@/lib/types";
+import Tracker from "@/components/Tracker";
+import type { Contact, Job, Prefs } from "@/lib/types";
 
 interface ProfileLite {
   full_name: string | null;
@@ -20,19 +21,7 @@ interface ProfileLite {
   prefs: Prefs;
 }
 
-const TABS = [
-  { id: "tailored", label: "Tailored" },
-  { id: "stretch", label: "Potential" },
-  { id: "wishlist", label: "Wishlist" },
-  { id: "interview", label: "Interviews" },
-  { id: "waiting", label: "In progress" },
-  { id: "applied", label: "Applied" },
-  { id: "skipped", label: "Skipped" },
-  { id: "all", label: "All" },
-] as const;
-type Tab = (typeof TABS)[number]["id"];
 
-const PORTAL_NAME: Record<string, string> = { linkedin: "LinkedIn", naukri: "Naukri", indeed: "Indeed", other: "Other" };
 
 function ago(iso: string | null) {
   if (!iso) return "never";
@@ -50,10 +39,12 @@ export default function Dashboard() {
   const extension = useExtension();
   const [profile, setProfile] = useState<ProfileLite | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [tab, setTab] = useState<Tab>("tailored");
   const [tailoring, setTailoring] = useState<string | null>(null);
   const [hunterMsg, setHunterMsg] = useState<string | null>(null);
   const [pendingRole, setPendingRole] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [netCap, setNetCap] = useState({ sentToday: 0, cap: 10 });
+  const [applying, setApplying] = useState<string | null>(null);
   const stopRef = useRef(false);
   const [ticker, setTicker] = useState<TickerJob[]>([]);
 
@@ -62,10 +53,13 @@ export default function Dashboard() {
   }, []);
 
   const load = useCallback(async () => {
-    const [{ profile }, { jobs }] = await Promise.all([
+    const [{ profile }, { jobs }, net] = await Promise.all([
       api<{ profile: ProfileLite }>("/api/profile"),
       api<{ jobs: Job[] }>("/api/jobs"),
+      api<{ contacts: Contact[]; sentToday: number; cap: number }>("/api/contacts").catch(() => ({ contacts: [], sentToday: 0, cap: 10 })),
     ]);
+    setContacts(net.contacts);
+    setNetCap({ sentToday: net.sentToday, cap: net.cap });
     if (!profile.onboarded) return router.replace("/onboarding");
     setProfile(profile);
     const r = readPendingRole();
@@ -81,37 +75,35 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, [session, load]);
 
-  const counts = useMemo(() => {
-    const c = { tailored: 0, stretch: 0, wishlist: 0, interview: 0, waiting: 0, applied: 0, skipped: 0, all: jobs.length };
-    for (const j of jobs) {
-      if (j.applied) c.applied++;
-      if (j.wishlisted) c.wishlist++;
-      if (j.stage === "interview") c.interview++;
-      if (j.status === "tailored" && !j.applied) c.tailored++;
-      else if (j.status === "stretch") c.stretch++;
-      else if (["found", "pending", "scoring", "error"].includes(j.status)) c.waiting++;
-      else if (j.status === "skipped") c.skipped++;
-    }
-    return c;
-  }, [jobs]);
-
-  const visible = useMemo(() => {
-    const list = jobs.filter((j) => {
-      switch (tab) {
-        case "tailored": return j.status === "tailored" && !j.applied;
-        case "stretch": return j.status === "stretch";
-        case "wishlist": return j.wishlisted;
-        case "interview": return j.stage === "interview";
-        case "waiting": return ["found", "pending", "scoring", "error"].includes(j.status);
-        case "applied": return j.applied;
-        case "skipped": return j.status === "skipped";
-        default: return true;
-      }
-    });
-    return tab === "tailored" || tab === "stretch" || tab === "wishlist" ? [...list].sort((a, b) => (b.match_percent ?? 0) - (a.match_percent ?? 0)) : list;
-  }, [jobs, tab]);
-
   const pending = jobs.filter((j) => j.status === "pending").length;
+  const unpacked = jobs.filter((j) => j.status === "tailored" && !j.applied && !j.apply_pack).length;
+  const toAsk = contacts.filter((c) => c.status === "suggested").length;
+
+  async function runApplier() {
+    stopRef.current = false;
+    setApplying("Starting…");
+    let n = 0;
+    try {
+      while (!stopRef.current) {
+        const r = await api<{ done: boolean; remaining: number; rate_limited?: boolean; job?: { title: string; route: string } }>("/api/applier/next", { method: "POST", body: "{}" });
+        if (r.done) break;
+        if (r.rate_limited) {
+          setApplying(`AI limit reached, waiting a minute (${r.remaining} left)…`);
+          await new Promise((res) => setTimeout(res, 60_000));
+          continue;
+        }
+        n++;
+        setApplying(`${n} ready, ${r.remaining} left${r.job ? `. Last: ${r.job.title} (${r.job.route === "referral_first" ? "referral first" : "apply directly"})` : ""}`);
+        await load();
+        await new Promise((res) => setTimeout(res, 5000));
+      }
+    } catch (e) {
+      setApplying((e as Error).message);
+      await new Promise((res) => setTimeout(res, 4000));
+    }
+    setApplying(null);
+    load();
+  }
 
   // Skills that would unlock the most potential jobs (wishlisted jobs count double).
   const unlocks = useMemo(() => {
@@ -170,16 +162,6 @@ export default function Dashboard() {
     window.postMessage({ source: "applyai-web", id, type: "RUN_HUNTER" }, window.location.origin);
   }
 
-  async function patch(id: string, body: Record<string, unknown>) {
-    await api(`/api/jobs/${id}`, { method: "PATCH", body: JSON.stringify(body) });
-    load();
-  }
-
-  async function download(id: string) {
-    const { url } = await api<{ url: string }>(`/api/jobs/${id}/resume`);
-    window.location.href = url;
-  }
-
   if (!session || !profile) return <Shell><p className="text-muted">Loading…</p></Shell>;
 
   return (
@@ -222,7 +204,7 @@ export default function Dashboard() {
       )}
 
       {/* Agents */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <AgentCard name="Hunter" live detail={`Last run ${ago(profile.last_hunter_at)}`}>
           {extension ? (
             <button className="btn-primary w-full" onClick={runHunter}>Run Hunter now</button>
@@ -239,78 +221,20 @@ export default function Dashboard() {
           )}
           {tailoring && <p className="text-xs text-muted mt-2">{tailoring}</p>}
         </AgentCard>
-        <div className="card p-6 flex flex-col">
-          <p className="text-xl font-bold tracking-tight mb-4">Progress</p>
-          <div className="grid grid-cols-3 gap-2 flex-1">
-            {([
-              ["tailored", "Ready", counts.tailored],
-              ["stretch", "Potential", counts.stretch],
-              ["applied", "Applied", counts.applied],
-            ] as const).map(([id, label, n]) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                className="rounded-[18px] bg-paper hover:bg-mist transition-colors px-3 py-3 text-left"
-              >
-                <span className="block text-3xl font-bold tabular-nums">{n}</span>
-                <span className="block text-xs text-muted mt-1">{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <AgentCard name="Applier" live detail={unpacked ? `${unpacked} tailored job${unpacked > 1 ? "s need" : " needs"} an apply pack` : `${jobs.filter((j) => j.status === "tailored" && !j.applied).length} ready to apply`}>
+          {applying ? (
+            <button className="btn-ghost w-full" onClick={() => (stopRef.current = true)}>Stop</button>
+          ) : (
+            <button className="btn-primary w-full" disabled={!unpacked} onClick={runApplier}>Prepare apply packs</button>
+          )}
+          {applying && <p className="text-xs text-muted mt-2">{applying}</p>}
+        </AgentCard>
+        <AgentCard name="Networker" live detail={`${netCap.sentToday} of ${netCap.cap} new people messaged today${toAsk ? `, ${toAsk} drafted and waiting` : ""}`}>
+          <Link className="btn-ghost w-full" href="/network">Open Network</Link>
+        </AgentCard>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto mb-5 pb-1">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${tab === t.id ? "bg-ink text-white" : "bg-card text-ink hover:bg-mist"}`}
-          >
-            {t.label} <span className={tab === t.id ? "text-white/60" : "text-muted"}>{counts[t.id]}</span>
-          </button>
-        ))}
-      </div>
-
-      {(tab === "stretch" || tab === "wishlist") && unlocks.length > 0 && (
-        <div className="card p-6 mb-5">
-          <p className="text-xl font-bold tracking-tight mb-1">Skills that would unlock more jobs</p>
-          <p className="text-sm text-muted mb-4">
-            These jobs are close. Learning one or two of these would make you a match. Pick one to get a learning plan from Coach.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {unlocks.map((u) => (
-              <Link
-                key={u.name}
-                href={`/coach?skill=${encodeURIComponent(u.name)}`}
-                className="group inline-flex items-center gap-2 rounded-full bg-mist hover:bg-ink hover:text-white px-4 py-2 text-sm transition-colors"
-              >
-                <span className="font-semibold">{u.name}</span>
-                <span className="opacity-60">{u.jobs} job{u.jobs > 1 ? "s" : ""}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {visible.length === 0 ? (
-        <div className="card p-10 text-center text-muted">
-          {jobs.length === 0
-            ? "No jobs yet. Run Hunter from the card above (or the extension), and new jobs will show up here."
-            : tab === "wishlist"
-            ? "Your wishlist is empty. In Potential, save the jobs you'd like to grow into."
-            : tab === "interview"
-            ? "No interviews yet. When a recruiter confirms one, open the job and click “I got an interview”."
-            : "Nothing in this list right now."}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {visible.map((j) => (
-            <JobRow key={j.id} job={j} onPatch={patch} onDownload={download} onInterview={async (id) => { await patch(id, { stage: "interview" }); router.push(`/coach?job=${id}`); }} />
-          ))}
-        </div>
-      )}
+      <Tracker jobs={jobs} contacts={contacts} onReload={load} unlocks={unlocks} />
     </Shell>
   );
 }
@@ -318,159 +242,9 @@ export default function Dashboard() {
 function AgentCard({ name, live, detail, children }: { name: string; live?: boolean; detail: string; children?: React.ReactNode }) {
   return (
     <div className={`card p-6 flex flex-col ${live ? "" : "opacity-60"}`}>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xl font-bold tracking-tight">{name}</p>
-        <span className={`chip ${live ? "bg-accent-soft text-accent" : "bg-mist text-muted"}`}>{live ? "Live" : "Coming next"}</span>
-      </div>
+      <p className="text-xl font-bold tracking-tight mb-1">{name}</p>
       <p className="text-sm text-muted mb-4 flex-1">{detail}</p>
       {children}
-    </div>
-  );
-}
-
-function StatusChip({ job }: { job: Job }) {
-  if (job.stage === "interview") return <span className="chip bg-ink text-white">Interview</span>;
-  if (job.applied) return <span className="chip bg-ink text-white">Applied</span>;
-  const map: Record<string, [string, string]> = {
-    tailored: ["Tailored", "bg-accent-soft text-accent"],
-    stretch: ["Potential", "bg-amber-soft text-amber"],
-    skipped: ["Skipped", "bg-mist text-muted"],
-    found: ["Reading job…", "bg-mist text-muted"],
-    pending: ["Waiting for Tailor", "bg-mist text-muted"],
-    scoring: ["Tailoring…", "bg-mist text-muted"],
-    error: ["Problem", "bg-rose-soft text-rose"],
-  };
-  const [label, cls] = map[job.status] || [job.status, "bg-mist text-muted"];
-  return <span className={`chip ${cls}`}>{label}</span>;
-}
-
-function JobRow({
-  job,
-  onPatch,
-  onDownload,
-  onInterview,
-}: {
-  job: Job;
-  onPatch: (id: string, b: Record<string, unknown>) => Promise<void>;
-  onDownload: (id: string) => Promise<void>;
-  onInterview: (id: string) => Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [notes, setNotes] = useState(job.notes || "");
-  const a = job.analysis;
-
-  return (
-    <div className="card">
-      <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-        <div className={`w-16 h-16 shrink-0 grid place-items-center rounded-full ${job.status === "tailored" ? "bg-accent-soft" : job.status === "stretch" ? "bg-amber-soft" : "bg-mist"}`}>
-          {job.match_percent !== null ? (
-            <p className={`text-2xl font-bold leading-none tabular-nums ${job.status === "tailored" ? "text-accent" : job.status === "stretch" ? "text-amber" : "text-muted"}`}>
-              {job.match_percent}<span className="text-base">%</span>
-            </p>
-          ) : (
-            <p className="text-muted text-sm">—</p>
-          )}
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <button className="text-left text-lg font-bold leading-snug hover:underline decoration-ink/30 decoration-2 underline-offset-4" onClick={() => setOpen(!open)}>{job.title}</button>
-          <p className="text-sm text-muted flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
-            <span>{[job.company, job.location].filter(Boolean).join(", ")}</span>
-            <span className="chip bg-mist text-muted">{PORTAL_NAME[job.portal] || job.portal}</span>
-          </p>
-        </div>
-        <StatusChip job={job} />
-        <div className="flex flex-wrap gap-2">
-          {job.stage === "interview" && <Link className="btn-primary py-1.5" href={`/coach?job=${job.id}`}>Prep with Coach</Link>}
-          {job.status === "stretch" && (
-            <button
-              className={`py-1.5 ${job.wishlisted ? "btn-primary" : "btn-ghost"}`}
-              aria-pressed={job.wishlisted}
-              onClick={() => onPatch(job.id, { wishlisted: !job.wishlisted })}
-            >
-              {job.wishlisted ? "On wishlist" : "Save to wishlist"}
-            </button>
-          )}
-          {job.tailored_path && <button className="btn-accent py-1.5" onClick={() => onDownload(job.id)}>Download CV</button>}
-          <a className="btn-ghost py-1.5" href={job.url} target="_blank" rel="noreferrer">Open job</a>
-          <button className="btn-ghost py-1.5" onClick={() => setOpen(!open)}>{open ? "Less" : "More"}</button>
-        </div>
-      </div>
-
-      {open && (
-        <div className=" border-t border-line p-4 sm:p-5 grid md:grid-cols-2 gap-6 text-sm">
-          <div className="space-y-3">
-            {a?.summary && <p>{a.summary}</p>}
-            {a?.skip_reason && <p className="text-muted">Skipped: {a.skip_reason}</p>}
-            {job.error && <p className="text-rose">{job.error}</p>}
-            {a?.must_haves_met && <p className="text-muted">Must-haves met: {a.must_haves_met}</p>}
-            {!!a?.matched?.length && (
-              <div>
-                <p className="font-medium mb-1">You match</p>
-                <div className="flex flex-wrap gap-1.5">{a.matched.map((m) => <span key={m} className="chip bg-accent-soft text-accent">{m}</span>)}</div>
-              </div>
-            )}
-            {job.status === "stretch" && !!a?.key_gaps?.length && (
-              <div>
-                <p className="font-medium mb-1">Learn these to qualify</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {a.key_gaps.map((g) => (
-                    <Link key={g} href={`/coach?skill=${encodeURIComponent(g)}&job=${job.id}`} className="chip bg-ink text-white hover:bg-[#3a3a3d]">
-                      {g}
-                    </Link>
-                  ))}
-                </div>
-                <Link href={`/coach?job=${job.id}&mode=upskill`} className="inline-block mt-2 text-sm font-semibold underline underline-offset-4">
-                  Get a learning plan for this job
-                </Link>
-              </div>
-            )}
-            {!!a?.gaps?.length && (
-              <div>
-                <p className="font-medium mb-1">{job.status === "stretch" ? "Everything this job asks that your CV doesn't show" : "Gaps"}</p>
-                <div className="flex flex-wrap gap-1.5">{a.gaps.map((g) => <span key={g} className="chip bg-amber-soft text-amber">{g}</span>)}</div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-3">
-            {!!job.tailored_edits?.changes?.length && (
-              <div>
-                <p className="font-medium mb-1">What Tailor changed</p>
-                {job.tailored_edits.note && <p className="text-muted mb-2">{job.tailored_edits.note}</p>}
-                <ul className="space-y-2 max-h-72 overflow-auto pr-1">
-                  {job.tailored_edits.changes.map((c, k) => (
-                    <li key={k} className="rounded-2xl bg-paper p-3">
-                      {c.before && <p className="text-muted line-through decoration-muted/40">{c.before}</p>}
-                      <p>{c.after}</p>
-                      {c.why && <p className="text-xs text-muted mt-1">{c.why}</p>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div>
-              <p className="font-medium mb-1">Notes</p>
-              <textarea className="input min-h-20" value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== (job.notes || "") && onPatch(job.id, { notes })} placeholder="Recruiter name, follow-up date…" />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-ghost py-1.5" onClick={() => onPatch(job.id, { applied: !job.applied })}>
-                {job.applied ? "Mark not applied" : "Mark as applied"}
-              </button>
-              {job.stage !== "interview" ? (
-                <button className="btn-ghost py-1.5" onClick={() => onInterview(job.id)}>I got an interview</button>
-              ) : (
-                <button className="btn-ghost py-1.5" onClick={() => onPatch(job.id, { stage: null })}>Not interviewing</button>
-              )}
-              {["stretch", "skipped", "error", "tailored"].includes(job.status) && (
-                <button className="btn-ghost py-1.5" onClick={() => onPatch(job.id, { retailor: true })}>Re-run Tailor</button>
-              )}
-              {job.status !== "skipped" && (
-                <button className="btn-ghost py-1.5" onClick={() => onPatch(job.id, { skip: true })}>Not interested</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

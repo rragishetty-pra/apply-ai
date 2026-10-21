@@ -76,7 +76,8 @@ async function run(tabId, func, args) {
   return res ? res.result : null;
 }
 
-function isLoginWall(portal, url) {
+function isLoginWall(portal, url, pattern) {
+  if (pattern && new RegExp(pattern, "i").test(url)) return true;
   if (portal === "linkedin") return /linkedin\.com\/(login|authwall|checkpoint|signup|uas\/login)/.test(url);
   if (portal === "naukri") return /naukri\.com\/nlogin/.test(url);
   if (portal === "indeed") return /secure\.indeed\.com\/auth/.test(url);
@@ -110,6 +111,8 @@ async function runHunter(trigger) {
 
     worker = await openWorker();
     const cards = [];
+    const loginPatterns = {};
+    for (const t of plan.tasks) if (t.login_pattern) loginPatterns[t.portal] = t.login_pattern;
     const blocked = new Set();
 
     // 1) Search pages
@@ -118,14 +121,14 @@ async function runHunter(trigger) {
       if (blocked.has(task.portal)) continue;
       await setProgress({ phase: "Searching", detail: `${task.portal}: ${task.query} · ${task.location}`, step: k + 1, of: plan.tasks.length, badge: "…" });
       const finalUrl = await visit(worker.tabId, task.url);
-      if (isLoginWall(task.portal, finalUrl)) {
+      if (isLoginWall(task.portal, finalUrl, task.login_pattern)) {
         blocked.add(task.portal);
         stats.login_needed.push(task.portal);
         await log(`${task.portal}: please sign in to it in Chrome — skipped for now.`);
         continue;
       }
       try {
-        const res = await run(worker.tabId, scrapeList, [task.portal]);
+        const res = await run(worker.tabId, scrapeList, [task.portal, task.link_pattern || ""]);
         const found = (res && res.jobs) || [];
         cards.push(...found);
         stats.searches++;
@@ -160,7 +163,7 @@ async function runHunter(trigger) {
       await setProgress({ phase: "Reading jobs", detail: job.url, step: k + 1, of: queue.length, badge: queue.length - k });
       try {
         const finalUrl = await visit(worker.tabId, job.url);
-        if (isLoginWall(job.portal, finalUrl)) {
+        if (isLoginWall(job.portal, finalUrl, loginPatterns[job.portal])) {
           blocked.add(job.portal);
           continue;
         }
@@ -174,6 +177,24 @@ async function runHunter(trigger) {
     }
     await closeWorker(worker);
     worker = null;
+
+    // 3b) Company careers pages (searched from the Apply.ai server through each company's job system)
+    stats.careers = 0;
+    try {
+      let cursor = 0;
+      let total = 0;
+      while (cursor !== null && !(await get("stop"))) {
+        const r = await api("/api/ext/careers-scan", { method: "POST", body: { cursor } });
+        total = r.total;
+        stats.careers += r.added || 0;
+        cursor = r.next;
+        await setProgress({ phase: "Company careers", detail: `${Math.min(cursor ?? total, total)} of ${total} companies checked`, step: Math.min(cursor ?? total, total), of: total, badge: "…" });
+      }
+      if (total) await log(`Company careers pages: ${stats.careers} new matching jobs from ${total} companies.`);
+    } catch (e) {
+      await log(`Company careers search skipped: ${e.message}`);
+    }
+
     await api("/api/ext/run-done", { method: "POST", body: { started_at, stats } }).catch(() => {});
     await log(`Read ${stats.read} job descriptions. Handing over to Tailor…`);
 
@@ -191,7 +212,46 @@ async function runHunter(trigger) {
       await setProgress({ phase: "Tailor", detail: r.job ? `${r.job.title} — ${r.job.match_percent ?? "?"}%` : "", badge: r.remaining });
       await sleep(5000);
     }
-    await log(`Done. ${stats.tailored} CVs tailored. Open your dashboard to review.`);
+    await log(`${stats.tailored} CVs tailored. Applier is preparing apply packs…`);
+
+    // 5) Applier: an apply pack for every tailored job
+    stats.packs = 0;
+    while (Date.now() < deadline && !(await get("stop"))) {
+      const r = await api("/api/ext/applier-next", { method: "POST" });
+      if (r.done) break;
+      if (r.rate_limited) {
+        await setProgress({ phase: "Applier", detail: "AI limit reached — waiting a minute", badge: r.remaining });
+        await sleep(60_000);
+        continue;
+      }
+      stats.packs++;
+      await setProgress({ phase: "Applier", detail: r.job ? `${r.job.title} — ${r.job.route === "referral_first" ? "referral first" : "apply directly"}` : "", badge: r.remaining });
+      await sleep(5000);
+    }
+
+    // 6) Networker: people to ask for referral-first jobs (within the daily limit)
+    stats.people = 0;
+    try {
+      const q = await api("/api/ext/networker-queue");
+      if (q.jobs.length) {
+        await log(`Networker is looking for people at ${q.jobs.map((j) => j.company).join(", ")}…`);
+        const w = await openWorker();
+        try {
+          for (const j of q.jobs) {
+            if (await get("stop")) break;
+            await setProgress({ phase: "Networker", detail: `${j.company}`, badge: "…" });
+            const r = await findPeople(j.id, j.company, j.title, w).catch((e) => ({ added: 0, reason: e.message }));
+            stats.people += r.added || 0;
+            if (r.reason === "cap") break;
+          }
+        } finally {
+          await closeWorker(w);
+        }
+      }
+    } catch (e) {
+      await log(`Networker skipped: ${e.message}`);
+    }
+    await log(`Done. ${stats.tailored} CVs tailored, ${stats.packs} apply packs, ${stats.people} people to ask for referrals.`);
     await set({ lastRun: { at: new Date().toISOString(), stats } });
     return { started: true, stats };
   } catch (e) {
@@ -213,13 +273,27 @@ const LOGIN_CHECKS = {
   indeed: { url: "https://profile.indeed.com/", ok: (u) => /profile\.indeed\.com/.test(u) },
 };
 
-async function checkLogins() {
+/**
+ * Check sign-in on the big three with known pages, and on any other selected portal by opening its
+ * home page and looking for an account menu vs a "Login / Register" button.
+ * `extra` = [{ id, home, login_pattern }] sent by the Apply.ai page for the user's selected portals.
+ */
+async function checkLogins(extra = []) {
   const worker = await openWorker();
   const status = {};
   try {
     for (const [portal, c] of Object.entries(LOGIN_CHECKS)) {
       const finalUrl = await visit(worker.tabId, c.url);
       status[portal] = c.ok(finalUrl) && !isLoginWall(portal, finalUrl) ? "ok" : "login_needed";
+    }
+    for (const p of (Array.isArray(extra) ? extra : []).slice(0, 12)) {
+      if (!p || !p.id || !/^https:\/\//.test(p.home || "") || LOGIN_CHECKS[p.id]) continue;
+      const finalUrl = await visit(worker.tabId, p.home);
+      if (isLoginWall(p.id, finalUrl, p.login_pattern)) {
+        status[p.id] = "login_needed";
+        continue;
+      }
+      status[p.id] = (await run(worker.tabId, detectSignedIn, []).catch(() => "unknown")) || "unknown";
     }
   } finally {
     await closeWorker(worker);
@@ -313,6 +387,37 @@ async function researchInterviews(sessionId, company, role) {
   return { found: out.found, login_needed: out.login_needed || [], sites: sections.filter((x) => x.items.length).map((x) => x.site) };
 }
 
+/* ─────────────────────────────── Networker ─────────────────────────────── */
+
+const ROLE_STOP = /\b(senior|sr|junior|jr|lead|principal|staff|associate|manager|engineer|ii|iii|i)\b/gi;
+
+/** Find people at the company on LinkedIn for one job, then let Networker draft referral asks. */
+async function findPeople(jobId, company, role, workerIn) {
+  if (!jobId || !company) throw new Error("Missing job details.");
+  const worker = workerIn || (await openWorker());
+  try {
+    const core = String(role || "").replace(ROLE_STOP, " ").replace(/\s+/g, " ").trim();
+    const searches = [
+      `${company} ${core || role}`.trim(),
+      `${company} talent acquisition`,
+      `${company} recruiter ${core}`.trim(),
+    ];
+    const people = [];
+    for (const q of searches) {
+      const url = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(q)}&origin=GLOBAL_SEARCH_HEADER`;
+      const finalUrl = await visit(worker.tabId, url);
+      if (isLoginWall("linkedin", finalUrl)) throw new Error("Sign in to LinkedIn in this Chrome first.");
+      const r = await run(worker.tabId, scrapeLinkedInPeople, []).catch(() => null);
+      if (r) people.push(...r.people);
+      await jitter(3000, 6000);
+    }
+    const res = await api("/api/ext/networker", { method: "POST", body: { job_id: jobId, people } });
+    return { added: res.added || 0, reason: res.reason || null, seen: people.length };
+  } finally {
+    if (!workerIn) await closeWorker(worker);
+  }
+}
+
 /* ──────────────────────── "Add this job" capture ──────────────────────── */
 
 async function captureActiveTab() {
@@ -345,9 +450,13 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           await scheduleDaily();
           return { paired: true };
         case "CHECK_LOGINS":
-          return checkLogins();
+          if (Array.isArray(msg.portals)) await set({ portalChecks: msg.portals });
+          return checkLogins(msg.portals);
         case "SCAN_LINKEDIN":
           return scanLinkedIn();
+        case "FIND_PEOPLE":
+          if (await get("running")) throw new Error("Hunter is running. Try again when it finishes.");
+          return findPeople(String(msg.jobId || ""), String(msg.company || "").slice(0, 120), String(msg.role || "").slice(0, 160));
         case "RESEARCH_INTERVIEWS":
           return researchInterviews(String(msg.sessionId || ""), String(msg.company || "").slice(0, 120), String(msg.role || "").slice(0, 160));
         case "RUN_HUNTER":
@@ -367,7 +476,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         await set({ stop: true });
         return { stopping: true };
       case "CHECK_LOGINS":
-        return checkLogins();
+        return checkLogins((await get("portalChecks")) || []);
       case "CAPTURE":
         return captureActiveTab();
       case "DISCONNECT":

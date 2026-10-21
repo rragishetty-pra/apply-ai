@@ -108,6 +108,38 @@ Chrome → `chrome://extensions` → turn on **Developer mode** → **Load unpac
   LeetCode, GeeksforGeeks…) through Gemini's Google Search grounding, and learning plans for skill gaps.
 - Database: `supabase/migration-002-achievements-coach.sql` (already folded into `schema.sql`).
 
+## Added in v0.3
+
+- **Applier**: for every tailored job, checks (with web search) whether the company favours referrals,
+  picks referral-first or apply-direct, and prepares an apply pack: cover note, safe answers with copy
+  buttons, earliest joining date from the notice period, a "needs your answer" list it never auto-fills
+  (CTC, gaps, visa…), and a checklist. Referral-first jobs wait 2 days, then say "Apply directly now".
+- **Networker**: the extension searches LinkedIn people at the company; Networker picks the best few
+  and drafts a connection note and referral ask in the user's voice. The user sends each one; the
+  Network page tracks who was asked and days since. Daily cap (default 10).
+- Daily run is now Hunter → Tailor → Applier → Networker.
+- Database: `supabase/migration-004-applier-networker.sql`.
+
+## Added in v0.4
+
+- **More portals**: Foundit, Hirist (on by default), plus Shine, Instahyre, Cutshort, Glassdoor, Wellfound
+  and iimjobs marked "Trial". New portals use a generic reader configured in `web/src/lib/portal-list.ts`
+  (job-link pattern + sign-in pattern), so they can be tuned without changing the extension.
+- **Company careers pages**: a shared list of 505 leading employers in India across 11 industries
+  (`web/src/lib/company-seed.json`, loaded on first use). Each company's careers site is found once
+  (Gemini + Google Search) and, if it runs on Workday, Greenhouse, Lever, SmartRecruiters or Ashby,
+  searched through that system's public job feed on every Hunter run. Matching jobs go straight to Tailor.
+  Users pick industries and can add companies in Settings.
+- Database: `supabase/migration-005-company-careers.sql`.
+
+## Cost controls (v0.4.1)
+
+- Tailor scores every job first on Gemini Flash-Lite; only matches and near-misses (within 5 points of
+  the match bar) get the full model's scoring and CV tailoring. Set `GEMINI_LITE_MODEL` to override.
+- Default job pages per run: 25 (users can raise it in Settings, up to 80).
+- Applier researches how each company hires once (Google Search) and shares it with every user for
+  30 days (`company_research` table); per-job apply packs no longer use web search.
+
 ## Next phases
 
 1. Run Hunter against live portals and tune `scrapers.js` from the results

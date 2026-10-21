@@ -6,10 +6,12 @@ import { getTodayStats } from "@/lib/stats";
 export const revalidate = 300; // landing stats refresh every 5 minutes
 
 const AGENTS = [
-  { name: "Hunter", live: true, text: "Checks Naukri, LinkedIn and Indeed every day from your own signed-in Chrome, and drops jobs that aren't your thing." },
-  { name: "Tailor", live: true, text: "Scores each job against your CV. For real matches, it rewrites the right lines in your own CV file. Same layout, nothing made up." },
-  { name: "Applier", live: false, text: "Gets everything ready to apply and tells you when a referral beats applying cold." },
-  { name: "Networker", live: false, text: "Finds people at the company and drafts referral asks that sound like you." },
+  { name: "Hunter", text: "Checks Naukri, LinkedIn and Indeed every day from your own signed-in Chrome, and drops jobs that aren't your thing." },
+  { name: "Tailor", text: "Scores each job against your CV. For real matches, it rewrites the right lines in your own CV file. Same layout, nothing made up." },
+  { name: "Applier", text: "Gets everything ready to apply and tells you when a referral beats applying cold." },
+  { name: "Networker", text: "Finds people at the company and drafts referral asks that sound like you." },
+  { name: "Potential & Wishlist", text: "Keeps the jobs you're close to, shows the one or two skills that would get you there, and saves the ones you want to grow into." },
+  { name: "Coach", text: "Reads what real candidates shared about your interview, builds your prep around your CV, quizzes you, and plans what to learn next." },
 ];
 
 export default async function Home() {
@@ -53,22 +55,15 @@ export default async function Home() {
 
       {/* How it works: a real sequence, so it's numbered */}
       <section id="how" className="mx-auto max-w-6xl px-5 py-20 lg:py-28">
-        <h2 className="display text-4xl sm:text-5xl max-w-[18ch] mb-4">Four agents, one relay.</h2>
+        <h2 className="display text-4xl sm:text-5xl max-w-[18ch] mb-4">Six agents, one relay.</h2>
         <p className="text-lg text-muted max-w-[48ch] mb-14">
           Each one finishes its part and passes the baton. You only step in to hit send.
         </p>
 
-        <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-10 gap-y-12">
+        <ol className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-12">
           {AGENTS.map((a, i) => (
             <li key={a.name}>
-              <div className="flex items-center gap-3 mb-5">
-                <span className={`h-10 w-10 rounded-full grid place-items-center font-bold ${a.live ? "bg-ink text-white" : "bg-mist text-muted"}`}>
-                  {i + 1}
-                </span>
-                <span className={`chip ${a.live ? "bg-accent-soft text-accent" : "bg-mist text-muted"}`}>
-                  {a.live ? "Live" : "Coming next"}
-                </span>
-              </div>
+              <span className="h-10 w-10 mb-5 rounded-full grid place-items-center font-bold bg-ink text-white">{i + 1}</span>
               <h3 className="text-2xl font-bold tracking-tight mb-2">{a.name}</h3>
               <p className="text-muted leading-relaxed">{a.text}</p>
             </li>

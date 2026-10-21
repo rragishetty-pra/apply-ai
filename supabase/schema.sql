@@ -175,3 +175,66 @@ create policy "own coach read" on public.coach_sessions for select using (auth.u
 alter table public.coach_sessions add column if not exists messages jsonb not null default '[]'::jsonb;
 alter table public.coach_sessions add column if not exists research jsonb;
 alter table public.coach_sessions add column if not exists research_at timestamptz;
+
+-- ───────────── Migration 004 (Applier, Networker) ─────────────
+alter table public.jobs add column if not exists apply_pack jsonb;
+alter table public.jobs add column if not exists apply_route text;               -- 'referral_first' | 'direct'
+alter table public.jobs add column if not exists referral_wait_until timestamptz;  -- referral-first jobs: apply directly after this
+alter table public.jobs add column if not exists apply_prepared_at timestamptz;
+
+create table if not exists public.contacts (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  job_id      uuid references public.jobs(id) on delete cascade,
+  company     text,
+  name        text not null,
+  headline    text,
+  profile_url text not null,
+  location    text,
+  degree      text,             -- '1st' | '2nd' | '3rd+'
+  kind        text,             -- 'recruiter' | 'hiring_manager' | 'team_member' | 'alumni' | 'other'
+  why         text,             -- why Networker picked this person
+  note        text,             -- connection note (LinkedIn limit 300 chars)
+  message     text,             -- follow-up referral ask, after they accept
+  status      text not null default 'suggested'
+              check (status in ('suggested','sent','replied','referred','skipped')),
+  sent_at     timestamptz,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (user_id, job_id, profile_url)
+);
+create index if not exists contacts_user_idx on public.contacts (user_id, created_at desc);
+create index if not exists contacts_sent_idx on public.contacts (user_id, sent_at);
+
+alter table public.contacts enable row level security;
+drop policy if exists "own contacts read" on public.contacts;
+create policy "own contacts read" on public.contacts for select using (auth.uid() = user_id);
+
+-- ───────────── Migration 005 (company careers) — table only; the company list loads from the app ─────────────
+create table if not exists public.companies (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  industry    text,
+  careers_url text,
+  ats         text,              -- workday | greenhouse | lever | smartrecruiters | ashby | null (unsupported)
+  ats_key     jsonb,
+  status      text not null default 'new' check (status in ('new','resolved','unsupported','failed')),
+  error       text,
+  resolved_at timestamptz,
+  checked_at  timestamptz,
+  added_by    uuid references auth.users(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create unique index if not exists companies_name_key on public.companies (lower(name));
+create index if not exists companies_industry_idx on public.companies (industry, name);
+alter table public.companies enable row level security;  -- server-only table
+
+-- ───────────── Migration 006 (shared company research) ─────────────
+create table if not exists public.company_research (
+  company_key   text primary key,
+  company       text not null,
+  data          jsonb not null,
+  sources       jsonb,
+  researched_at timestamptz not null default now()
+);
+alter table public.company_research enable row level security;

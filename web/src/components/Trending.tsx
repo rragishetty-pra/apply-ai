@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { TodayStats, TopSearch, TickerJob } from "@/lib/stats";
 
-const PORTAL: Record<string, string> = { naukri: "Naukri", linkedin: "LinkedIn", indeed: "Indeed", other: "Other" };
+import { portalName } from "@/lib/portal-list";
 
 /** Clicking a role starts sign-in / sign-up with that role carried through to onboarding. */
 export const huntHref = (role: string) => `/login?role=${encodeURIComponent(role)}`;
@@ -35,7 +35,7 @@ export function TopSearches({ stats }: { stats: TodayStats }) {
         <div className="px-4 pt-4 flex flex-wrap gap-2">
           {stats.portals.map((p) => (
             <span key={p.portal} className="chip bg-mist text-muted">
-              {PORTAL[p.portal] || p.portal} <b className="text-ink">{p.count}</b>
+              {portalName(p.portal)} <b className="text-ink">{p.count}</b>
             </span>
           ))}
         </div>
@@ -95,14 +95,14 @@ export function JobTicker({ jobs }: { jobs: TickerJob[] }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 tabIndex={clone ? -1 : undefined}
-                title={`Open this job on ${PORTAL[j.portal || ""] || "the portal"}`}
+                title={`Open this job on ${portalName(j.portal)}`}
                 className="flex items-center gap-2 whitespace-nowrap rounded-full bg-card px-4 py-2 text-sm transition-colors hover:bg-ink hover:text-white"
               >
                 <span className="font-semibold">{j.title}</span>
                 {(j.company || j.location) && (
                   <span className="opacity-60">{[j.company, j.location].filter(Boolean).join(", ")}</span>
                 )}
-                {j.portal && <span className="opacity-60">on {PORTAL[j.portal] || j.portal}</span>}
+                {j.portal && <span className="opacity-60">on {portalName(j.portal)}</span>}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden className="opacity-50">
                   <path d="M14 5h5v5M19 5l-8 8M10 5H5v14h14v-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

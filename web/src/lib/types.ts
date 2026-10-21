@@ -1,4 +1,6 @@
-export type Portal = "linkedin" | "naukri" | "indeed" | "other";
+import { DEFAULT_PORTALS } from "./portal-list";
+
+export type Portal = string;
 
 /** Answers a user gives during onboarding. Stored in profiles.prefs. */
 export interface Prefs {
@@ -17,6 +19,10 @@ export interface Prefs {
   portals: Portal[];               // portals Hunter should search
   max_jobs_per_run: number;        // cap on job pages Hunter opens per run
   daily_run_hour: number | null;   // 0–23 local hour for the extension's daily run, null = manual only
+  company_careers: boolean;        // also search company careers pages
+  company_industries: string[];    // industries for careers search; empty = all
+  standard_answers: Record<string, string>; // answers the user gave to "needs you" questions, reused by Applier
+  networker_daily_cap: number;     // max new people to message per day
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -32,9 +38,13 @@ export const DEFAULT_PREFS: Prefs = {
   notice_period_days: null,
   job_types: ["full-time"],
   match_threshold: 70,
-  portals: ["linkedin", "naukri", "indeed"],
-  max_jobs_per_run: 40,
+  portals: DEFAULT_PORTALS,
+  max_jobs_per_run: 25,
   daily_run_hour: 13,
+  company_careers: true,
+  company_industries: [],
+  standard_answers: {},
+  networker_daily_cap: 10,
 };
 
 export interface Profile {
@@ -83,8 +93,42 @@ export interface Job {
   applied_at: string | null;
   notes: string | null;
   wishlisted: boolean;
-  stage: "interview" | "offer" | "rejected" | null;
+  stage: "interview" | "offer" | "rejected" | "not_interested" | null;
   interview_at: string | null;
+  apply_pack: ApplyPack | null;
+  apply_route: "referral_first" | "direct" | null;
+  referral_wait_until: string | null;
+  created_at: string;
+}
+
+export interface ApplyPack {
+  route: "referral_first" | "direct";
+  route_reason: string;
+  company_notes: string[];             // e.g. "Runs an employee referral programme"
+  where: { label: string; url: string }[];
+  cover_note: string;
+  answers: { question: string; answer: string }[];      // safe to paste
+  needs_you: { key: string; question: string; why: string; answer?: string }[]; // never auto-filled
+  checklist: string[];
+  earliest_joining: string;            // computed from notice period
+  sources?: { title: string; url: string }[];
+}
+
+export interface Contact {
+  id: string;
+  job_id: string | null;
+  company: string | null;
+  name: string;
+  headline: string | null;
+  profile_url: string;
+  location: string | null;
+  degree: string | null;
+  kind: string | null;
+  why: string | null;
+  note: string | null;
+  message: string | null;
+  status: "suggested" | "sent" | "replied" | "referred" | "skipped";
+  sent_at: string | null;
   created_at: string;
 }
 

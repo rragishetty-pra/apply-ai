@@ -6,7 +6,7 @@
 /* eslint-disable no-unused-vars */
 
 /** Read job cards from a search-results page. Returns [{portal, external_id, url, title, company, location, posted_text, snippet}] */
-async function scrapeList(portal) {
+async function scrapeList(portal, linkPattern) {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const txt = (root, sel) => {
     if (!root) return "";
@@ -108,6 +108,49 @@ async function scrapeList(portal) {
         snippet: txt(card, ".job-snippet|[data-testid='jobsnippet_footer']"),
       });
     });
+  }
+
+  // Generic reader for every other portal: job-detail links that match the portal's URL pattern.
+  if (!["linkedin", "naukri", "indeed"].includes(portal) && linkPattern) {
+    const re = new RegExp(linkPattern, "i");
+    const CITY = /(bengaluru|bangalore|hyderabad|pune|mumbai|chennai|gurugram|gurgaon|noida|delhi|kolkata|ahmedabad|kochi|coimbatore|remote|work from home|hybrid|india)/i;
+    const POSTED = /(\d+\+?\s*(day|days|hour|hours|hr|hrs|week|weeks|month|months)\s*ago|today|just now|yesterday|few hours)/i;
+    const pick = () => [...document.querySelectorAll("a[href]")].filter((a) => re.test(a.href));
+    for (let i = 0; i < 24 && pick().length === 0; i++) await sleep(500);
+    for (let i = 0; i < 8; i++) {
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep(700);
+    }
+    for (const a of pick()) {
+      const href = a.href.split("#")[0];
+      // Card = the largest ancestor that still holds only this one job link
+      let card = a;
+      while (card.parentElement && card.parentElement !== document.body) {
+        const p = card.parentElement;
+        const links = new Set([...p.querySelectorAll("a[href]")].filter((x) => re.test(x.href)).map((x) => x.href.split("#")[0]));
+        if (links.size > 1 || (p.innerText || "").length > 2500) break;
+        card = p;
+      }
+      const lines = (card.innerText || "").split("\n").map((x) => x.trim()).filter((x) => x && x.length < 160);
+      const heading = card.querySelector("h1,h2,h3,h4,[class*='title' i]");
+      const title = ((a.innerText || "").trim().split("\n")[0] || (heading && heading.innerText.trim().split("\n")[0]) || lines[0] || "").trim();
+      if (!title || title.length < 3) continue;
+      const company =
+        (card.querySelector("[class*='company' i],[class*='comp-name' i],[class*='employer' i],[class*='org' i]") || {}).innerText ||
+        lines.find((l) => l !== title && !CITY.test(l) && !POSTED.test(l) && !/\d+\s*-\s*\d+\s*(yrs|years)|₹|lpa|apply|save/i.test(l)) ||
+        "";
+      const loc = (card.querySelector("[class*='location' i],[class*='loc' i]") || {}).innerText || lines.find((l) => CITY.test(l)) || "";
+      const idMatch = href.match(/(\d{5,})(?!.*\d{5,})/) || href.match(/-([A-Za-z0-9]{6,10})(?:[?#]|$)/);
+      push({
+        external_id: idMatch ? idMatch[1] : href.replace(/^https?:\/\/[^/]+/, "").slice(0, 190),
+        url: href,
+        title,
+        company: String(company).split("\n")[0].trim().slice(0, 120),
+        location: String(loc).split("\n")[0].trim().slice(0, 120),
+        posted_text: (((card.innerText || "").match(POSTED) || [""])[0]).slice(0, 60),
+        snippet: "",
+      });
+    }
   }
 
   return { url: location.href, jobs: out };
@@ -289,4 +332,63 @@ async function scrapeInterviewReviews(site) {
   }
   const notFound = /(page not found|404|no interviews? (found|yet)|we couldn.t find)/i.test(bodyText().slice(0, 3000));
   return { url: location.href, items: notFound ? [] : items, login_needed: !items.length && walled(), not_found: notFound };
+}
+
+/** Read people cards from a LinkedIn people-search results page. */
+async function scrapeLinkedInPeople() {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 20 && !document.querySelector("main a[href*='/in/']"); i++) await sleep(500);
+  for (let i = 0; i < 3; i++) {
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(700);
+  }
+  const first = (root, sel) => {
+    for (const s of sel.split("|")) {
+      const el = root.querySelector(s);
+      if (el && el.innerText && el.innerText.trim()) return el.innerText.trim();
+    }
+    return "";
+  };
+  const cards = [...document.querySelectorAll("main li")].filter((li) => li.querySelector("a[href*='/in/']") && !li.querySelector("li"));
+  const people = [];
+  for (const li of cards) {
+    const a = li.querySelector("a[href*='/in/']");
+    const lines = (li.innerText || "").split("\n").map((x) => x.trim()).filter(Boolean);
+    const nameEl = li.querySelector("span[aria-hidden='true']") || a;
+    const name = (nameEl.innerText || lines[0] || "").split("\n")[0].trim();
+    const degree = (lines.find((l) => /(1st|2nd|3rd\+?)/.test(l)) || "").match(/1st|2nd|3rd\+?/);
+    const headline =
+      first(li, ".entity-result__primary-subtitle|[class*='primary-subtitle']") ||
+      lines.find((l, i) => i > 0 && l !== name && !/(1st|2nd|3rd|degree connection|Connect|Message|Follow)/i.test(l)) ||
+      "";
+    const location = first(li, ".entity-result__secondary-subtitle|[class*='secondary-subtitle']");
+    const summary = first(li, ".entity-result__summary|[class*='summary']");
+    people.push({
+      name,
+      headline: [headline, summary].filter(Boolean).join(" | "),
+      profile_url: a.href.split("?")[0],
+      location,
+      degree: degree ? degree[0] : "",
+    });
+  }
+  return { url: location.href, people: people.slice(0, 25) };
+}
+
+/** Is the user signed in on this portal? Looks for account menus vs "Login / Register" buttons. */
+async function detectSignedIn() {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  await sleep(1500);
+  const els = [...document.querySelectorAll("header a, header button, nav a, nav button, [class*='header' i] a, [class*='header' i] button, [class*='nav' i] a")];
+  const visible = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  };
+  const texts = els.filter(visible).map((el) => (el.innerText || el.getAttribute("aria-label") || "").trim().toLowerCase()).filter(Boolean);
+  const loggedIn =
+    texts.some((t) => /^(log ?out|sign ?out|my (profile|account|jobs|applications)|profile|dashboard|my naukri|my shine)$/.test(t)) ||
+    !!document.querySelector("[class*='avatar' i] img, img[alt*='profile' i], [aria-label*='account menu' i], [aria-label*='profile menu' i]");
+  const loggedOut = texts.some((t) => /^(log ?in|sign ?in|login|register|sign ?up|join now|log in \/ register|login \/ register|jobseeker login)$/.test(t));
+  if (loggedIn && !loggedOut) return "ok";
+  if (loggedOut && !loggedIn) return "login_needed";
+  return loggedIn ? "ok" : "unknown";
 }

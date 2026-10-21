@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { Prefs } from "@/lib/types";
+import { INDUSTRIES, PORTALS as ALL_PORTALS } from "@/lib/portal-list";
 
 /** Comma-separated list input that keeps the user's typing intact until blur. */
 function ListInput({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
@@ -30,11 +31,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
-const PORTALS: { id: Prefs["portals"][number]; name: string }[] = [
-  { id: "naukri", name: "Naukri" },
-  { id: "linkedin", name: "LinkedIn" },
-  { id: "indeed", name: "Indeed" },
-];
+const PORTALS = ALL_PORTALS;
 
 export default function PrefsForm({ prefs, onChange, email }: { prefs: Prefs; onChange: (p: Prefs) => void; email?: string | null }) {
   const set = <K extends keyof Prefs>(k: K, v: Prefs[K]) => onChange({ ...prefs, [k]: v });
@@ -120,8 +117,8 @@ export default function PrefsForm({ prefs, onChange, email }: { prefs: Prefs; on
       <section className="space-y-4">
         <h3 className="display text-2xl">Hunter’s schedule</h3>
         <div>
-          <span className="label" id="portals-label">Portals to search</span>
-          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="portals-label">
+          <span className="label" id="portals-label">Job portals to search</span>
+          <div className="grid sm:grid-cols-2 gap-2" role="group" aria-labelledby="portals-label">
             {PORTALS.map((p) => {
               const on = prefs.portals.includes(p.id);
               return (
@@ -130,27 +127,66 @@ export default function PrefsForm({ prefs, onChange, email }: { prefs: Prefs; on
                   type="button"
                   aria-pressed={on}
                   onClick={() => set("portals", on ? prefs.portals.filter((x) => x !== p.id) : [...prefs.portals, p.id])}
-                  className={`inline-flex items-center gap-2 rounded-full pl-3 pr-4 py-2 text-sm font-semibold transition-colors ${
-                    on ? "bg-ink text-white" : "bg-card text-muted ring-1 ring-line hover:text-ink hover:ring-ink/30"
+                  className={`flex items-start gap-3 rounded-[18px] px-4 py-3 text-left transition-colors ${
+                    on ? "bg-ink text-white" : "bg-card text-ink ring-1 ring-line hover:ring-ink/30"
                   }`}
                 >
-                  <span className={`grid h-5 w-5 place-items-center rounded-full ${on ? "bg-white text-ink" : "ring-1 ring-[#cfcec9]"}`} aria-hidden>
+                  <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${on ? "bg-white text-ink" : "ring-1 ring-[#cfcec9]"}`} aria-hidden>
                     {on && (
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                         <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </span>
-                  {p.name}
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      {p.name}
+                      {p.trial && <span className={`chip px-2 py-0 ${on ? "bg-white/15 text-white" : "bg-mist text-muted"}`}>Trial</span>}
+                    </span>
+                    <span className={`block text-xs ${on ? "text-white/70" : "text-muted"}`}>
+                      {p.about}{p.needsLogin ? ". Sign in to it in Chrome" : ""}
+                    </span>
+                  </span>
                 </button>
               );
             })}
           </div>
           <p className="hint">
             {prefs.portals.length
-              ? `Hunter will search ${prefs.portals.length} portal${prefs.portals.length > 1 ? "s" : ""}. Tap a portal to turn it on or off.`
+              ? `Hunter will search ${prefs.portals.length} portal${prefs.portals.length > 1 ? "s" : ""}. “Trial” portals are new and may find fewer jobs while we tune them.`
               : "Pick at least one portal for Hunter to search."}
           </p>
+        </div>
+
+        <div>
+          <Toggle checked={prefs.company_careers} onChange={(v) => set("company_careers", v)} label="Also search company careers pages" />
+          {prefs.company_careers && (
+            <div className="mt-3">
+              <span className="label" id="ind-label">Industries to cover</span>
+              <div className="flex flex-wrap gap-2" role="group" aria-labelledby="ind-label">
+                {INDUSTRIES.map((ind) => {
+                  const on = prefs.company_industries.includes(ind);
+                  return (
+                    <button
+                      key={ind}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => set("company_industries", on ? prefs.company_industries.filter((x) => x !== ind) : [...prefs.company_industries, ind])}
+                      className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${on ? "bg-ink text-white" : "bg-mist text-muted hover:text-ink"}`}
+                    >
+                      {ind}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="hint">
+                {prefs.company_industries.length
+                  ? `Hunter checks the careers pages of leading employers in ${prefs.company_industries.length} industr${prefs.company_industries.length > 1 ? "ies" : "y"}.`
+                  : "None picked means all industries."}{" "}
+                Missing a company? Add it in Settings.
+              </p>
+            </div>
+          )}
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
@@ -167,6 +203,11 @@ export default function PrefsForm({ prefs, onChange, email }: { prefs: Prefs; on
             <label className="label">Job pages to read per run</label>
             <input className="input" type="number" min={5} max={80} value={prefs.max_jobs_per_run} onChange={(e) => set("max_jobs_per_run", Number(e.target.value))} />
             <p className="hint">Lower is gentler on your portal accounts.</p>
+          </div>
+          <div>
+            <label className="label" htmlFor="cap">New people to message per day</label>
+            <input id="cap" className="input" type="number" min={1} max={25} value={prefs.networker_daily_cap} onChange={(e) => set("networker_daily_cap", Number(e.target.value))} />
+            <p className="hint">Networker never drafts more than this a day. 10 keeps LinkedIn happy.</p>
           </div>
         </div>
       </section>

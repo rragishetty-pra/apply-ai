@@ -17,7 +17,8 @@ writeFileSync(join(dir, "config.js"),
 
 const manifestPath = join(dir, "manifest.json");
 const m = JSON.parse(readFileSync(manifestPath, "utf8"));
-const portals = m.host_permissions.filter((h) => /linkedin|naukri|indeed|glassdoor|ambitionbox/.test(h));
+const oldApp = (m.content_scripts[0].matches || [])[0];
+const portals = m.host_permissions.filter((h) => h !== oldApp);
 m.host_permissions = [...portals, `${origin}/*`];
 m.content_scripts[0].matches = [`${origin}/*`];
 writeFileSync(manifestPath, JSON.stringify(m, null, 2) + "\n");

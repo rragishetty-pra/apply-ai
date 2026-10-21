@@ -1,6 +1,6 @@
 import "server-only";
 import { supabaseAdmin } from "./supabase-admin";
-import { scoreAndTailor, vetEdits } from "./agents";
+import { quickScore, scoreAndTailor, vetEdits } from "./agents";
 import { applyEdits } from "./docx";
 import { HttpError } from "./auth";
 import { AIServiceError } from "./gemini";
@@ -56,7 +56,13 @@ export async function tailorNext(userId: string): Promise<TailorStep> {
       .select("kind, title, issuer, date_text, description")
       .eq("user_id", userId)
       .eq("status", "confirmed");
-    const ans = await scoreAndTailor(profile, prefs, next, achievementsForPrompt(ach || []));
+    const achText = achievementsForPrompt(ach || []);
+    // Step 1: quick score on the cheaper model. Step 2 (full model) only for matches and near-misses,
+    // so the jobs that get a tailored CV are always scored and written by the main model.
+    const quick = await quickScore(profile, prefs, next, achText);
+    const quickPct = Math.round(Number(quick.match_percent) || 0);
+    const worthFull = quick.verdict === "match" || quickPct >= prefs.match_threshold - 5;
+    const ans = worthFull ? await scoreAndTailor(profile, prefs, next, achText) : { ...quick, edits: undefined, note: undefined };
     const pct = clamp(Math.round(Number(ans.match_percent) || 0), 0, 100);
     const verdict = pct >= prefs.match_threshold && ans.verdict !== "skip" ? "match" : ans.verdict === "match" ? "stretch" : ans.verdict;
     const analysis: Analysis = {

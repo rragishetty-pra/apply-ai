@@ -1,6 +1,7 @@
 import { handle, HttpError, json, requireUser } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { mergePrefs, type Prefs } from "@/lib/types";
+import { DEFAULT_PORTALS, INDUSTRIES, PORTAL_IDS } from "@/lib/portal-list";
 
 export const GET = handle(async (req) => {
   const user = await requireUser(req);
@@ -27,13 +28,19 @@ export const POST = handle(async (req) => {
   const user = await requireUser(req);
   const body = await req.json();
   const p = body.prefs || {};
-  const portals = list(p.portals).filter((x): x is Prefs["portals"][number] => ["linkedin", "naukri", "indeed"].includes(x));
+  const portals = list(p.portals).filter((x) => PORTAL_IDS.includes(x));
 
   const phone = str(p.phone).replace(/[^\d+]/g, "");
   if (phone && !/^\+?\d{10,15}$/.test(phone)) throw new HttpError(400, "Enter a valid mobile number, e.g. +91 98765 43210.");
 
+  // Keep answers remembered by Applier; they aren't part of the settings form.
+  const { data: existing } = await supabaseAdmin().from("profiles").select("prefs").eq("id", user.id).maybeSingle();
+  const standard_answers = (existing?.prefs?.standard_answers as Record<string, string>) || {};
+
   const prefs: Prefs = mergePrefs({
     phone,
+    standard_answers,
+    networker_daily_cap: Math.min(25, Math.max(1, num(p.networker_daily_cap) ?? 10)),
     target_roles: list(p.target_roles).slice(0, 5),
     key_skills: list(p.key_skills),
     experience_years: num(p.experience_years),
@@ -45,8 +52,10 @@ export const POST = handle(async (req) => {
     notice_period_days: num(p.notice_period_days),
     job_types: list(p.job_types),
     match_threshold: Math.min(95, Math.max(40, num(p.match_threshold) ?? 70)),
-    portals: portals.length ? portals : ["linkedin", "naukri", "indeed"],
-    max_jobs_per_run: Math.min(80, Math.max(5, num(p.max_jobs_per_run) ?? 40)),
+    portals: portals.length ? portals : DEFAULT_PORTALS,
+    company_careers: p.company_careers === undefined ? true : !!p.company_careers,
+    company_industries: list(p.company_industries).filter((x) => (INDUSTRIES as readonly string[]).includes(x)),
+    max_jobs_per_run: Math.min(80, Math.max(5, num(p.max_jobs_per_run) ?? 25)),
     daily_run_hour: num(p.daily_run_hour),
   });
 

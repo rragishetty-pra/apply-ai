@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Apply.ai \u2014 Hunter",
-  "version": "0.2.0",
+  "version": "0.4.1",
   "description": "Lets Apply.ai's Hunter agent search Naukri, LinkedIn and Indeed from your own signed-in Chrome. Your passwords never leave your browser.",
   "permissions": [
     "storage",
@@ -17,6 +17,13 @@
     "https://*.glassdoor.com/*",
     "https://*.glassdoor.co.in/*",
     "https://www.ambitionbox.com/*",
+    "https://www.foundit.in/*",
+    "https://www.shine.com/*",
+    "https://www.hirist.tech/*",
+    "https://www.instahyre.com/*",
+    "https://cutshort.io/*",
+    "https://wellfound.com/*",
+    "https://www.iimjobs.com/*",
     "https://apply-ai-kohl.vercel.app/*"
   ],
   "background": {
