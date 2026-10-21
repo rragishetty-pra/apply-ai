@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/supabase-browser";
 import { useAuth } from "@/components/useAuth";
@@ -21,7 +22,9 @@ interface ProfileLite {
 
 const TABS = [
   { id: "tailored", label: "Tailored" },
-  { id: "stretch", label: "Stretch" },
+  { id: "stretch", label: "Potential" },
+  { id: "wishlist", label: "Wishlist" },
+  { id: "interview", label: "Interviews" },
   { id: "waiting", label: "In progress" },
   { id: "applied", label: "Applied" },
   { id: "skipped", label: "Skipped" },
@@ -79,9 +82,11 @@ export default function Dashboard() {
   }, [session, load]);
 
   const counts = useMemo(() => {
-    const c = { tailored: 0, stretch: 0, waiting: 0, applied: 0, skipped: 0, all: jobs.length };
+    const c = { tailored: 0, stretch: 0, wishlist: 0, interview: 0, waiting: 0, applied: 0, skipped: 0, all: jobs.length };
     for (const j of jobs) {
       if (j.applied) c.applied++;
+      if (j.wishlisted) c.wishlist++;
+      if (j.stage === "interview") c.interview++;
       if (j.status === "tailored" && !j.applied) c.tailored++;
       else if (j.status === "stretch") c.stretch++;
       else if (["found", "pending", "scoring", "error"].includes(j.status)) c.waiting++;
@@ -95,16 +100,36 @@ export default function Dashboard() {
       switch (tab) {
         case "tailored": return j.status === "tailored" && !j.applied;
         case "stretch": return j.status === "stretch";
+        case "wishlist": return j.wishlisted;
+        case "interview": return j.stage === "interview";
         case "waiting": return ["found", "pending", "scoring", "error"].includes(j.status);
         case "applied": return j.applied;
         case "skipped": return j.status === "skipped";
         default: return true;
       }
     });
-    return tab === "tailored" || tab === "stretch" ? [...list].sort((a, b) => (b.match_percent ?? 0) - (a.match_percent ?? 0)) : list;
+    return tab === "tailored" || tab === "stretch" || tab === "wishlist" ? [...list].sort((a, b) => (b.match_percent ?? 0) - (a.match_percent ?? 0)) : list;
   }, [jobs, tab]);
 
   const pending = jobs.filter((j) => j.status === "pending").length;
+
+  // Skills that would unlock the most potential jobs (wishlisted jobs count double).
+  const unlocks = useMemo(() => {
+    const m = new Map<string, { name: string; jobs: number; wish: number }>();
+    for (const j of jobs) {
+      if (j.status !== "stretch" || !j.analysis) continue;
+      const gaps = j.analysis.key_gaps?.length ? j.analysis.key_gaps : (j.analysis.gaps || []).slice(0, 3);
+      for (const g of gaps) {
+        const k = g.toLowerCase().trim();
+        if (!k) continue;
+        const e = m.get(k) || { name: g.trim(), jobs: 0, wish: 0 };
+        e.jobs++;
+        if (j.wishlisted) e.wish++;
+        m.set(k, e);
+      }
+    }
+    return [...m.values()].sort((a, b) => b.jobs + b.wish - (a.jobs + a.wish)).slice(0, 8);
+  }, [jobs]);
 
   async function runTailor() {
     stopRef.current = false;
@@ -219,7 +244,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-3 gap-2 flex-1">
             {([
               ["tailored", "Ready", counts.tailored],
-              ["stretch", "Stretch", counts.stretch],
+              ["stretch", "Potential", counts.stretch],
               ["applied", "Applied", counts.applied],
             ] as const).map(([id, label, n]) => (
               <button
@@ -248,16 +273,41 @@ export default function Dashboard() {
         ))}
       </div>
 
+      {(tab === "stretch" || tab === "wishlist") && unlocks.length > 0 && (
+        <div className="card p-6 mb-5">
+          <p className="text-xl font-bold tracking-tight mb-1">Skills that would unlock more jobs</p>
+          <p className="text-sm text-muted mb-4">
+            These jobs are close. Learning one or two of these would make you a match. Pick one to get a learning plan from Coach.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {unlocks.map((u) => (
+              <Link
+                key={u.name}
+                href={`/coach?skill=${encodeURIComponent(u.name)}`}
+                className="group inline-flex items-center gap-2 rounded-full bg-mist hover:bg-ink hover:text-white px-4 py-2 text-sm transition-colors"
+              >
+                <span className="font-semibold">{u.name}</span>
+                <span className="opacity-60">{u.jobs} job{u.jobs > 1 ? "s" : ""}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {visible.length === 0 ? (
         <div className="card p-10 text-center text-muted">
           {jobs.length === 0
             ? "No jobs yet. Run Hunter from the card above (or the extension), and new jobs will show up here."
+            : tab === "wishlist"
+            ? "Your wishlist is empty. In Potential, save the jobs you'd like to grow into."
+            : tab === "interview"
+            ? "No interviews yet. When a recruiter confirms one, open the job and click “I got an interview”."
             : "Nothing in this list right now."}
         </div>
       ) : (
         <div className="space-y-3">
           {visible.map((j) => (
-            <JobRow key={j.id} job={j} onPatch={patch} onDownload={download} />
+            <JobRow key={j.id} job={j} onPatch={patch} onDownload={download} onInterview={async (id) => { await patch(id, { stage: "interview" }); router.push(`/coach?job=${id}`); }} />
           ))}
         </div>
       )}
@@ -279,10 +329,11 @@ function AgentCard({ name, live, detail, children }: { name: string; live?: bool
 }
 
 function StatusChip({ job }: { job: Job }) {
+  if (job.stage === "interview") return <span className="chip bg-ink text-white">Interview</span>;
   if (job.applied) return <span className="chip bg-ink text-white">Applied</span>;
   const map: Record<string, [string, string]> = {
     tailored: ["Tailored", "bg-accent-soft text-accent"],
-    stretch: ["Stretch", "bg-amber-soft text-amber"],
+    stretch: ["Potential", "bg-amber-soft text-amber"],
     skipped: ["Skipped", "bg-mist text-muted"],
     found: ["Reading job…", "bg-mist text-muted"],
     pending: ["Waiting for Tailor", "bg-mist text-muted"],
@@ -293,7 +344,17 @@ function StatusChip({ job }: { job: Job }) {
   return <span className={`chip ${cls}`}>{label}</span>;
 }
 
-function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, b: Record<string, unknown>) => Promise<void>; onDownload: (id: string) => Promise<void> }) {
+function JobRow({
+  job,
+  onPatch,
+  onDownload,
+  onInterview,
+}: {
+  job: Job;
+  onPatch: (id: string, b: Record<string, unknown>) => Promise<void>;
+  onDownload: (id: string) => Promise<void>;
+  onInterview: (id: string) => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState(job.notes || "");
   const a = job.analysis;
@@ -318,7 +379,17 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
           </p>
         </div>
         <StatusChip job={job} />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {job.stage === "interview" && <Link className="btn-primary py-1.5" href={`/coach?job=${job.id}`}>Prep with Coach</Link>}
+          {job.status === "stretch" && (
+            <button
+              className={`py-1.5 ${job.wishlisted ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={job.wishlisted}
+              onClick={() => onPatch(job.id, { wishlisted: !job.wishlisted })}
+            >
+              {job.wishlisted ? "On wishlist" : "Save to wishlist"}
+            </button>
+          )}
           {job.tailored_path && <button className="btn-accent py-1.5" onClick={() => onDownload(job.id)}>Download CV</button>}
           <a className="btn-ghost py-1.5" href={job.url} target="_blank" rel="noreferrer">Open job</a>
           <button className="btn-ghost py-1.5" onClick={() => setOpen(!open)}>{open ? "Less" : "More"}</button>
@@ -338,9 +409,24 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
                 <div className="flex flex-wrap gap-1.5">{a.matched.map((m) => <span key={m} className="chip bg-accent-soft text-accent">{m}</span>)}</div>
               </div>
             )}
+            {job.status === "stretch" && !!a?.key_gaps?.length && (
+              <div>
+                <p className="font-medium mb-1">Learn these to qualify</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {a.key_gaps.map((g) => (
+                    <Link key={g} href={`/coach?skill=${encodeURIComponent(g)}&job=${job.id}`} className="chip bg-ink text-white hover:bg-[#3a3a3d]">
+                      {g}
+                    </Link>
+                  ))}
+                </div>
+                <Link href={`/coach?job=${job.id}&mode=upskill`} className="inline-block mt-2 text-sm font-semibold underline underline-offset-4">
+                  Get a learning plan for this job
+                </Link>
+              </div>
+            )}
             {!!a?.gaps?.length && (
               <div>
-                <p className="font-medium mb-1">{job.status === "stretch" ? "Skills to build for this one" : "Gaps"}</p>
+                <p className="font-medium mb-1">{job.status === "stretch" ? "Everything this job asks that your CV doesn't show" : "Gaps"}</p>
                 <div className="flex flex-wrap gap-1.5">{a.gaps.map((g) => <span key={g} className="chip bg-amber-soft text-amber">{g}</span>)}</div>
               </div>
             )}
@@ -370,6 +456,11 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
               <button className="btn-ghost py-1.5" onClick={() => onPatch(job.id, { applied: !job.applied })}>
                 {job.applied ? "Mark not applied" : "Mark as applied"}
               </button>
+              {job.stage !== "interview" ? (
+                <button className="btn-ghost py-1.5" onClick={() => onInterview(job.id)}>I got an interview</button>
+              ) : (
+                <button className="btn-ghost py-1.5" onClick={() => onPatch(job.id, { stage: null })}>Not interviewing</button>
+              )}
               {["stretch", "skipped", "error", "tailored"].includes(job.status) && (
                 <button className="btn-ghost py-1.5" onClick={() => onPatch(job.id, { retailor: true })}>Re-run Tailor</button>
               )}

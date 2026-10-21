@@ -2,6 +2,7 @@ export type Portal = "linkedin" | "naukri" | "indeed" | "other";
 
 /** Answers a user gives during onboarding. Stored in profiles.prefs. */
 export interface Prefs {
+  phone: string;                   // mobile number shared with employers (email comes from sign-in)
   target_roles: string[];          // e.g. ["ETL Test Lead", "Senior ETL QA Engineer"]
   key_skills: string[];            // headline skills to search and match on
   experience_years: number | null;
@@ -19,6 +20,7 @@ export interface Prefs {
 }
 
 export const DEFAULT_PREFS: Prefs = {
+  phone: "",
   target_roles: [],
   key_skills: [],
   experience_years: null,
@@ -80,6 +82,9 @@ export interface Job {
   applied: boolean;
   applied_at: string | null;
   notes: string | null;
+  wishlisted: boolean;
+  stage: "interview" | "offer" | "rejected" | null;
+  interview_at: string | null;
   created_at: string;
 }
 
@@ -91,6 +96,7 @@ export interface Analysis {
   must_haves_met: string;    // e.g. "3 of 5"
   summary: string;
   skip_reason?: string;
+  key_gaps?: string[];       // potential jobs: the 1–3 skills/tools that would close the gap
 }
 
 export interface TailorEdits {
@@ -101,4 +107,73 @@ export interface TailorEdits {
 
 export function mergePrefs(p: Partial<Prefs> | null | undefined): Prefs {
   return { ...DEFAULT_PREFS, ...(p || {}) };
+}
+
+export type AchievementKind = "certification" | "award" | "appreciation" | "recommendation" | "other";
+
+export interface Achievement {
+  id: string;
+  kind: AchievementKind;
+  title: string;
+  issuer: string | null;
+  date_text: string | null;
+  description: string | null;
+  url: string | null;
+  source: "manual" | "linkedin";
+  status: "confirmed" | "suggested";
+  created_at: string;
+}
+
+export interface UpskillPlan {
+  goal: string;
+  summary: string;
+  skills: {
+    name: string;
+    why: string;               // why it matters for the target jobs
+    level_needed: string;      // e.g. "working knowledge"
+    weeks: number;
+    steps: string[];           // what to learn, in order
+    resources: { name: string; kind: string; free: boolean; url?: string }[];
+    project: string;           // a small project that proves the skill
+    show_it: string;           // how to show it on CV / LinkedIn
+  }[];
+  weekly_plan: { week: string; focus: string }[];
+  first_step_today: string;
+}
+
+export interface InterviewPrep {
+  company: string;
+  role: string;
+  overview: string;
+  rounds: { name: string; format: string; what_they_check: string }[];
+  questions: { question: string; type: string; tip: string; source?: string }[];
+  recruiters_look_for: string[];
+  your_stories: { prompt: string; use: string }[];   // STAR stories from the user's own CV/achievements
+  gaps_to_patch: { topic: string; how: string }[];
+  prep_plan: { day: string; tasks: string[] }[];
+  questions_to_ask: string[];
+  confidence_note: string;   // how much real data was found
+}
+
+export interface CoachSession {
+  id: string;
+  job_id: string | null;
+  kind: "interview" | "upskill";
+  title: string;
+  input: Record<string, unknown>;
+  result: InterviewPrep | UpskillPlan | null;
+  sources: { title: string; url: string }[] | null;
+  search_html: string | null;
+  error: string | null;
+  messages: CoachMessage[];
+  research: { site: string; url: string; count: number }[] | null;   // pages read in the user's Chrome
+  research_at: string | null;
+  created_at: string;
+}
+
+export interface CoachMessage {
+  role: "user" | "coach";
+  text: string;
+  at: string;
+  added?: string;            // what Coach added to the prep, e.g. "6 more questions"
 }

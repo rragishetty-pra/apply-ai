@@ -190,3 +190,103 @@ async function scrapeDetail(portal) {
     problem: description ? null : "no_description",
   };
 }
+
+/** Read list entries from one of the user's own LinkedIn profile "details" pages or activity feed. */
+async function scrapeLinkedInList(kind) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 20 && !document.querySelector("main"); i++) await sleep(400);
+  // Load lazy items and expand "see more" text
+  for (let i = 0; i < 6; i++) {
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(800);
+    document.querySelectorAll("button.scaffold-finite-scroll__load-button, button[aria-label*='Show more results' i]").forEach((b) => b.click());
+  }
+  document.querySelectorAll("button.inline-show-more-text__button, button[aria-label*='see more' i]").forEach((b) => b.click());
+  await sleep(600);
+
+  const clean = (t) => t.replace(/\n{2,}/g, "\n").split("\n").map((x) => x.trim()).filter((x, i, a) => x && a.indexOf(x) === i).join(" | ");
+  const items = [];
+  const seen = new Set();
+  const push = (t) => {
+    const c = clean(t || "");
+    if (c.length < 15 || seen.has(c)) return;
+    seen.add(c);
+    items.push(c.slice(0, 1500));
+  };
+
+  if (kind === "posts") {
+    const KEY = /(award|recogni|appreciat|certif|honou?r|kudos|spot|star performer|congrat|milestone|achiev|thank you .* team|promoted)/i;
+    document.querySelectorAll(".feed-shared-update-v2, [data-urn*='activity']").forEach((el) => {
+      const t = el.innerText || "";
+      if (KEY.test(t)) push(t);
+    });
+  } else {
+    const main = document.querySelector("main") || document.body;
+    main.querySelectorAll("li.pvs-list__paged-list-item, li.artdeco-list__item, .pvs-list__item--line-separated, section li").forEach((el) => {
+      if (el.querySelector("li")) return; // only innermost entries
+      push(el.innerText);
+    });
+  }
+  const empty = /nothing to see|haven.t added|no (certifications|honors|recommendations)/i.test(document.body.innerText || "");
+  return { url: location.href, items: items.slice(0, 40), empty };
+}
+
+/** Glassdoor search results: find the company's interview page. */
+async function findGlassdoorInterviewUrl() {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let i = 0; i < 15; i++) {
+    const links = [...document.querySelectorAll("a[href]")].map((a) => a.href);
+    const direct = links.find((h) => /\/Interview\/[^?#]*-E\d+(_P\d+)?\.htm/.test(h));
+    if (direct) return direct.split("?")[0];
+    const overview = links.map((h) => h.match(/Working-at-([^?#]*?)-EI_IE(\d+)/)).find(Boolean);
+    if (overview) return `${location.origin}/Interview/${overview[1]}-Interview-Questions-E${overview[2]}.htm`;
+    await sleep(500);
+  }
+  return null;
+}
+
+/** Read interview reviews on a Glassdoor or AmbitionBox page. */
+async function scrapeInterviewReviews(site) {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  await sleep(1500);
+  const bodyText = () => document.body.innerText || "";
+  const walled = () =>
+    /(sign in to (continue|read|see)|continue with google|create an account to|join to unlock|log in to view)/i.test(bodyText().slice(0, 6000)) &&
+    bodyText().length < 6000;
+
+  for (let i = 0; i < 4; i++) {
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(800);
+  }
+  // Expand truncated reviews
+  document
+    .querySelectorAll("button, span[role='button'], a")
+    .forEach((b) => /^(read more|show more|continue reading|view more)$/i.test((b.innerText || "").trim()) && b.click());
+  await sleep(800);
+
+  const SEL = {
+    glassdoor: "[data-test='InterviewReview'], [id^='InterviewReview'], li.empReview, [class*='InterviewReview'], [class*='interview-details']",
+    ambitionbox: "[class*='interview-card'], [class*='iq-card'], [data-testid*='interview'], [class*='interviewCard'], [class*='round-wrapper']",
+  };
+  const KEY = /(interview|round|question|asked|process)/i;
+  let nodes = [...document.querySelectorAll(SEL[site] || "article")];
+  if (nodes.length < 2) {
+    // Fallback: innermost blocks that read like an interview review
+    nodes = [...document.querySelectorAll("article, li, section, div")].filter((el) => {
+      const t = el.innerText || "";
+      if (t.length < 200 || t.length > 5000 || !KEY.test(t)) return false;
+      return ![...el.children].some((c) => (c.innerText || "").length > t.length * 0.8);
+    });
+  }
+  const seen = new Set();
+  const items = [];
+  for (const el of nodes) {
+    const t = (el.innerText || "").replace(/\n{2,}/g, "\n").trim();
+    if (t.length < 120 || seen.has(t.slice(0, 200))) continue;
+    seen.add(t.slice(0, 200));
+    items.push(t.slice(0, 2500));
+    if (items.length >= 25) break;
+  }
+  const notFound = /(page not found|404|no interviews? (found|yet)|we couldn.t find)/i.test(bodyText().slice(0, 3000));
+  return { url: location.href, items: notFound ? [] : items, login_needed: !items.length && walled(), not_found: notFound };
+}

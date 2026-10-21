@@ -6,6 +6,7 @@ import type { Analysis, Prefs, Profile } from "./types";
 
 export interface CVInsights {
   full_name: string;
+  phone: string;
   current_title: string;
   experience_years: number | null;
   target_roles: string[];
@@ -18,6 +19,7 @@ export async function extractInsights(cvText: string): Promise<CVInsights> {
   return askJSON<CVInsights>(
     `You read CVs for a job-search assistant. From the CV below, return JSON with:
 - full_name: the person's name
+- phone: their mobile number exactly as written in the CV (empty string if none)
 - current_title: their latest job title
 - experience_years: total years of professional experience as a number (null if unclear)
 - target_roles: 3 job titles they would most plausibly search for next (same field, same or one level up)
@@ -65,7 +67,8 @@ interface TailorAnswer extends Analysis {
 export async function scoreAndTailor(
   profile: Profile,
   prefs: Prefs,
-  job: { title: string | null; company: string | null; location: string | null; description: string | null }
+  job: { title: string | null; company: string | null; location: string | null; description: string | null },
+  achievements = "none listed"
 ): Promise<TailorAnswer> {
   const paragraphs = profile.cv_paragraphs;
   const cvBlock = paragraphs
@@ -80,7 +83,9 @@ export async function scoreAndTailor(
 - A job still counts as a match even if a few must-haves are missing (e.g. 3 of 5) — recruiters can decide.
 - verdict: "match" if match_percent >= ${prefs.match_threshold}; "stretch" if it is within reach after learning
   a few skills (roughly ${Math.max(prefs.match_threshold - 20, 30)}–${prefs.match_threshold - 1}); otherwise "skip".
-- matched: requirements the CV clearly meets. gaps: requirements it doesn't show.
+- matched: requirements the CV (or the candidate's achievements below) clearly meets.
+- gaps: requirements it doesn't show, as short names of the skill, tool or experience (1–4 words each, e.g. "Snowflake", "Python scripting", "Team leadership").
+- key_gaps: only for "stretch": the 1–3 gaps that would most likely get this person the job if they learned them.
 - must_haves_met: like "3 of 5". summary: one plain sentence on the fit.
 - skip_reason: only if verdict is "skip".
 
@@ -93,6 +98,8 @@ export async function scoreAndTailor(
    Rules — these are strict:
    - Never invent experience, tools, employers, titles, dates, numbers, degrees or certifications.
      You may reorder, re-emphasise and use the job's wording for things the CV already shows.
+   - You MAY mention items from the candidate's ACHIEVEMENTS list (their own certifications and awards) where
+     they help for this job, e.g. in the summary or a skills/certifications line. Use their exact names.
    - Never edit the name, contact details, company names, job titles, dates or education lines.
    - Keep each rewrite within 80–125% of the original length, same tense and voice.
    - Write like a real experienced professional: plain, specific, no buzzword stuffing, no emojis.
@@ -100,12 +107,15 @@ export async function scoreAndTailor(
    - Each edit: {"i": paragraph number, "text": full new paragraph text, "why": short reason}.
    - note: one sentence on what you emphasised.
 
-Return JSON: {match_percent, verdict, matched, gaps, must_haves_met, summary, skip_reason?, edits?, note?}
+Return JSON: {match_percent, verdict, matched, gaps, key_gaps?, must_haves_met, summary, skip_reason?, edits?, note?}
 
 JOB: ${job.title || ""} at ${job.company || ""} (${job.location || ""})
 """
 ${(job.description || "").slice(0, 12000)}
 """
+
+CANDIDATE'S ACHIEVEMENTS (their own, confirmed):
+${achievements}
 
 CANDIDATE PREFERENCES: notice period ${prefs.notice_period_days ?? "not given"} days.
 

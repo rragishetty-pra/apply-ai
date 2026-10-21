@@ -228,6 +228,91 @@ async function checkLogins() {
   return status;
 }
 
+/* ──────────────────── LinkedIn achievements scan ──────────────────── */
+
+async function scanLinkedIn() {
+  if (await get("running")) throw new Error("Hunter is running. Try the scan when it finishes.");
+  const worker = await openWorker();
+  try {
+    const me = await visit(worker.tabId, "https://www.linkedin.com/in/me/");
+    if (isLoginWall("linkedin", me) || !/linkedin\.com\/in\/[^/]+/.test(me)) {
+      throw new Error("Sign in to LinkedIn in this Chrome first, then try again.");
+    }
+    const base = me.match(/https:\/\/www\.linkedin\.com\/in\/[^/?#]+/)[0];
+    const pages = [
+      { section: "Licenses & certifications", url: `${base}/details/certifications/`, kind: "list" },
+      { section: "Honors & awards", url: `${base}/details/honors/`, kind: "list" },
+      { section: "Recommendations received", url: `${base}/details/recommendations/?detailScreenTabIndex=0`, kind: "list" },
+      { section: "Courses", url: `${base}/details/courses/`, kind: "list" },
+      { section: "Recent posts mentioning awards or recognition", url: `${base}/recent-activity/all/`, kind: "posts" },
+    ];
+    const sections = [];
+    for (const p of pages) {
+      await visit(worker.tabId, p.url);
+      const r = await run(worker.tabId, scrapeLinkedInList, [p.kind]).catch(() => null);
+      sections.push({ section: p.section, items: (r && !r.empty && r.items) || [] });
+      await jitter(2500, 5000);
+    }
+    const res = await api("/api/ext/linkedin-scan", { method: "POST", body: { sections } });
+    return { found: res.found, read: sections.reduce((n, x) => n + x.items.length, 0) };
+  } finally {
+    await closeWorker(worker);
+  }
+}
+
+/* ──────────────────── Interview research (Coach) ──────────────────── */
+
+const LEGAL = new Set(["pvt", "private", "ltd", "limited", "inc", "llp", "llc", "corp", "corporation", "co"]);
+const slugify = (t) => {
+  const words = String(t || "").toLowerCase().replace(/&/g, " and ").split(/[^a-z0-9]+/).filter(Boolean);
+  const core = words.filter((w) => !LEGAL.has(w));
+  return (core.length ? core : words).join("-");
+};
+
+/** Read interview reviews for a company/role on Glassdoor and AmbitionBox in the user's own Chrome. */
+async function researchInterviews(sessionId, company, role) {
+  if (!sessionId || !company) throw new Error("Missing company for research.");
+  if (await get("running")) throw new Error("Hunter is running. Try again when it finishes.");
+  const worker = await openWorker();
+  const sections = [];
+  try {
+    // AmbitionBox: role page first, then the company's interview page
+    const c = slugify(company);
+    const r = slugify(role);
+    for (const url of [
+      r && `https://www.ambitionbox.com/interviews/${c}-interview-questions/${r}`,
+      `https://www.ambitionbox.com/interviews/${c}-interview-questions`,
+    ].filter(Boolean)) {
+      await visit(worker.tabId, url);
+      const res = await run(worker.tabId, scrapeInterviewReviews, ["ambitionbox"]).catch(() => null);
+      if (res && (res.items.length || res.login_needed)) {
+        sections.push({ site: "AmbitionBox", url: res.url, items: res.items, login_needed: res.login_needed });
+        if (res.items.length >= 5) break;
+      }
+      await jitter(2000, 4000);
+    }
+
+    // Glassdoor: find the company's interview page, then read it (filtered by role when possible)
+    await visit(worker.tabId, `https://www.glassdoor.co.in/Search/results.htm?keyword=${encodeURIComponent(company)}`);
+    const gdUrl = await run(worker.tabId, findGlassdoorInterviewUrl, []).catch(() => null);
+    if (gdUrl) {
+      for (const url of [role ? `${gdUrl}?filter.jobTitleFTS=${encodeURIComponent(role)}` : null, gdUrl].filter(Boolean)) {
+        await jitter(2000, 4000);
+        await visit(worker.tabId, url);
+        const res = await run(worker.tabId, scrapeInterviewReviews, ["glassdoor"]).catch(() => null);
+        if (res && (res.items.length || res.login_needed)) {
+          sections.push({ site: "Glassdoor", url: res.url, items: res.items, login_needed: res.login_needed });
+          if (res.items.length >= 5 || res.login_needed) break;
+        }
+      }
+    }
+  } finally {
+    await closeWorker(worker);
+  }
+  const out = await api("/api/ext/interview-research", { method: "POST", body: { session_id: sessionId, sections } });
+  return { found: out.found, login_needed: out.login_needed || [], sites: sections.filter((x) => x.items.length).map((x) => x.site) };
+}
+
 /* ──────────────────────── "Add this job" capture ──────────────────────── */
 
 async function captureActiveTab() {
@@ -261,6 +346,10 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           return { paired: true };
         case "CHECK_LOGINS":
           return checkLogins();
+        case "SCAN_LINKEDIN":
+          return scanLinkedIn();
+        case "RESEARCH_INTERVIEWS":
+          return researchInterviews(String(msg.sessionId || ""), String(msg.company || "").slice(0, 120), String(msg.role || "").slice(0, 160));
         case "RUN_HUNTER":
           if (await get("running")) throw new Error("Hunter is already running.");
           runHunter("dashboard").catch(() => {});

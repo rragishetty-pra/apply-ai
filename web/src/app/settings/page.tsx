@@ -64,7 +64,7 @@ export default function Settings() {
       <h1 className="display text-4xl mb-8">Settings</h1>
       <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
         <div className="card p-6 sm:p-8">
-          <PrefsForm prefs={prefs} onChange={setPrefs} />
+          <PrefsForm prefs={prefs} onChange={setPrefs} email={session?.user.email} />
           <div className="mt-8 flex items-center gap-4">
             <button className="btn-primary" disabled={busy} onClick={save}>{busy ? "Saving…" : "Save changes"}</button>
             {msg && <p className="text-sm text-muted">{msg}</p>}

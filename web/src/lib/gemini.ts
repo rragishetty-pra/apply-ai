@@ -62,6 +62,72 @@ export async function askJSON<T>(prompt: string, opts: { temperature?: number; m
   );
 }
 
+export interface Grounded<T> {
+  data: T;
+  sources: { title: string; url: string }[];
+  searchHtml: string | null; // Google's search-suggestion chip; must be shown alongside grounded results
+  grounded: boolean;
+}
+
+/**
+ * Ask with Google Search grounding so the model can read current public pages
+ * (interview experiences, course pages…). Falls back to an ungrounded answer if
+ * search isn't available on this key/model, and says so via `grounded: false`.
+ */
+export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: number } = {}): Promise<Grounded<T>> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new AIServiceError(500, "GEMINI_API_KEY is not set on the server.");
+  const candidates = [...new Set([workingModel, process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean) as string[])];
+
+  for (const model of candidates) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt + "\n\nReply with ONLY the JSON object, no other text." }] }],
+        tools: [{ google_search: {} }],
+        generationConfig: { temperature: opts.temperature ?? 0.4, maxOutputTokens: 8192 },
+      }),
+    });
+    if (res.status === 404) {
+      if (workingModel === model) workingModel = null;
+      continue;
+    }
+    if (res.status === 429) throw new AIServiceError(429, "The AI's free limit was reached. Try again in a minute.");
+    if (res.status === 400 || res.status === 403) {
+      // Search grounding not available for this key/model → ungrounded answer
+      const data = await askJSON<T>(prompt, opts);
+      return { data, sources: [], searchHtml: null, grounded: false };
+    }
+    if (!res.ok) {
+      const body = await res.text();
+      throw new AIServiceError(502, `The AI service had a problem (${res.status}). Try again in a few minutes. ${body.slice(0, 160)}`);
+    }
+    workingModel = model;
+    const json = await res.json();
+    const cand = json?.candidates?.[0];
+    const text: string = cand?.content?.parts?.map((p: { text?: string }) => p.text || "").join("") ?? "";
+    const meta = cand?.groundingMetadata || {};
+    const seen = new Set<string>();
+    const sources: { title: string; url: string }[] = [];
+    for (const c of meta.groundingChunks || []) {
+      const u = c?.web?.uri;
+      if (u && !seen.has(u)) {
+        seen.add(u);
+        sources.push({ title: c.web.title || new URL(u).hostname, url: u });
+      }
+    }
+    return {
+      data: parseJSON<T>(text),
+      sources: sources.slice(0, 20),
+      searchHtml: meta.searchEntryPoint?.renderedContent || null,
+      grounded: sources.length > 0,
+    };
+  }
+  throw new AIServiceError(503, "No AI model is available. Set GEMINI_MODEL in Vercel to a current model, e.g. gemini-3.8-flash.");
+}
+
 export function parseJSON<T>(text: string): T {
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
   try {

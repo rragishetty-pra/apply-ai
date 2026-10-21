@@ -15,6 +15,9 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
     update.applied_at = body.applied ? new Date().toISOString() : null;
   }
   if (typeof body.notes === "string") update.notes = body.notes.slice(0, 2000);
+  if (typeof body.wishlisted === "boolean") update.wishlisted = body.wishlisted;
+  if (body.stage === null || ["interview", "offer", "rejected"].includes(body.stage)) update.stage = body.stage;
+  if (typeof body.interview_at === "string") update.interview_at = body.interview_at.slice(0, 60) || null;
   if (body.skip === true) update.status = "skipped";
   if (body.retailor === true) {
     // Jobs skipped before their page was read go back to Hunter's reading queue first.
@@ -27,7 +30,7 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
     .update(update)
     .eq("id", id)
     .eq("user_id", user.id)
-    .select("id, applied, applied_at, notes, status")
+    .select("id, applied, applied_at, notes, status, wishlisted, stage, interview_at")
     .single();
   if (error) throw new Error(error.message);
   return json({ job: data });

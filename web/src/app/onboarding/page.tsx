@@ -11,6 +11,7 @@ import { DEFAULT_PREFS, mergePrefs, type Prefs } from "@/lib/types";
 
 interface Insights {
   full_name: string;
+  phone: string;
   current_title: string;
   experience_years: number | null;
   target_roles: string[];
@@ -56,6 +57,7 @@ export default function Onboarding() {
         // Pre-fill answers from the CV; the user reviews them on the next step.
         setPrefs((p) => ({
           ...p,
+          phone: p.phone || ins.phone || "",
           target_roles: p.target_roles.length > 1 ? p.target_roles : withRole([...p.target_roles, ...(ins.target_roles || [])].filter((r, k, a) => a.findIndex((x) => x.toLowerCase() === r.toLowerCase()) === k), readPendingRole()).slice(0, 4),
           key_skills: p.key_skills.length ? p.key_skills : ins.key_skills || [],
           experience_years: p.experience_years ?? ins.experience_years ?? null,
@@ -72,7 +74,9 @@ export default function Onboarding() {
 
   async function savePrefs(next: number, onboarded?: boolean) {
     setErr(null);
+    if (!prefs.phone.replace(/[^\d]/g, "")) return setErr("Add your mobile number so companies can reach you.");
     if (!prefs.target_roles.length) return setErr("Add at least one job title to search for.");
+    if (!prefs.portals.length) return setErr("Pick at least one portal for Hunter to search.");
     setSaving(true);
     try {
       await api("/api/profile", { method: "POST", body: JSON.stringify({ prefs, ...(onboarded ? { onboarded: true } : {}) }) });
@@ -149,7 +153,7 @@ export default function Onboarding() {
             <div>
               <h1 className="display text-5xl mb-2">A few questions</h1>
               <p className="text-muted mb-8">We filled in what we could from your CV. Check it and change anything that’s off.</p>
-              <PrefsForm prefs={prefs} onChange={setPrefs} />
+              <PrefsForm prefs={prefs} onChange={setPrefs} email={session.user.email} />
               <div className="mt-8 flex justify-between">
                 <button className="btn-ghost" onClick={() => setStep(0)}>Back</button>
                 <button className="btn-primary" disabled={saving} onClick={() => savePrefs(2)}>{saving ? "Saving…" : "Continue"}</button>

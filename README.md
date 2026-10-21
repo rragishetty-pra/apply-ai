@@ -98,6 +98,16 @@ Chrome → `chrome://extensions` → turn on **Developer mode** → **Load unpac
 - **Free hosting limits.** Supabase pauses free projects after a week without activity;
   Vercel's Hobby plan is for non-commercial use — fine for a free beta.
 
+## Added in v0.2
+
+- **Achievements**: certifications, awards, appreciation and recommendations, added by hand or found by
+  scanning the user's own LinkedIn (via the extension; the user confirms each one). Tailor may cite them.
+- **Potential jobs + Wishlist**: near-miss jobs with the 1–3 skills that would close the gap, a
+  "skills that unlock more jobs" rollup, and a wishlist.
+- **Coach**: interview prep that searches public interview experiences (Glassdoor, AmbitionBox, Reddit,
+  LeetCode, GeeksforGeeks…) through Gemini's Google Search grounding, and learning plans for skill gaps.
+- Database: `supabase/migration-002-achievements-coach.sql` (already folded into `schema.sql`).
+
 ## Next phases
 
 1. Run Hunter against live portals and tune `scrapers.js` from the results

@@ -36,11 +36,35 @@ const PORTALS: { id: Prefs["portals"][number]; name: string }[] = [
   { id: "indeed", name: "Indeed" },
 ];
 
-export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange: (p: Prefs) => void }) {
+export default function PrefsForm({ prefs, onChange, email }: { prefs: Prefs; onChange: (p: Prefs) => void; email?: string | null }) {
   const set = <K extends keyof Prefs>(k: K, v: Prefs[K]) => onChange({ ...prefs, [k]: v });
 
   return (
     <div className="space-y-8">
+      <section className="space-y-4">
+        <h3 className="display text-2xl">How companies reach you</h3>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label" htmlFor="phone">Mobile number</label>
+            <input
+              id="phone"
+              className="input"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+91 98765 43210"
+              value={prefs.phone}
+              onChange={(e) => set("phone", e.target.value)}
+            />
+          </div>
+          <div>
+            <span className="label">Email</span>
+            <p className="rounded-2xl bg-mist px-4 py-3 text-[15px] truncate" title={email || ""}>{email || "Your sign-in email"}</p>
+          </div>
+        </div>
+        <p className="hint">We use your sign-in email and this number whenever an application asks for contact details.</p>
+      </section>
+
       <section className="space-y-4">
         <h3 className="display text-2xl">What are you looking for?</h3>
         <div>
@@ -96,22 +120,37 @@ export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange:
       <section className="space-y-4">
         <h3 className="display text-2xl">Hunter’s schedule</h3>
         <div>
-          <span className="label">Portals to search</span>
-          <div className="flex flex-wrap gap-2">
+          <span className="label" id="portals-label">Portals to search</span>
+          <div className="flex flex-wrap gap-2" role="group" aria-labelledby="portals-label">
             {PORTALS.map((p) => {
               const on = prefs.portals.includes(p.id);
               return (
                 <button
                   key={p.id}
                   type="button"
+                  aria-pressed={on}
                   onClick={() => set("portals", on ? prefs.portals.filter((x) => x !== p.id) : [...prefs.portals, p.id])}
-                  className={`chip px-4 py-2 text-sm transition-colors ${on ? "bg-ink text-white" : "bg-mist text-muted hover:text-ink"}`}
+                  className={`inline-flex items-center gap-2 rounded-full pl-3 pr-4 py-2 text-sm font-semibold transition-colors ${
+                    on ? "bg-ink text-white" : "bg-card text-muted ring-1 ring-line hover:text-ink hover:ring-ink/30"
+                  }`}
                 >
+                  <span className={`grid h-5 w-5 place-items-center rounded-full ${on ? "bg-white text-ink" : "ring-1 ring-[#cfcec9]"}`} aria-hidden>
+                    {on && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
                   {p.name}
                 </button>
               );
             })}
           </div>
+          <p className="hint">
+            {prefs.portals.length
+              ? `Hunter will search ${prefs.portals.length} portal${prefs.portals.length > 1 ? "s" : ""}. Tap a portal to turn it on or off.`
+              : "Pick at least one portal for Hunter to search."}
+          </p>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>

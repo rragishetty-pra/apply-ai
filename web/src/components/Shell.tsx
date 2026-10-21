@@ -27,8 +27,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <header className=" bg-paper/90 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
           <Link href="/dashboard"><Logo /></Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1 overflow-x-auto">
             {link("/dashboard", "Dashboard")}
+            {link("/coach", "Coach")}
+            {link("/achievements", "Achievements")}
             {link("/settings", "Settings")}
             <button
               className="px-4 py-2 rounded-full text-sm font-semibold text-muted hover:text-ink hover:bg-mist"

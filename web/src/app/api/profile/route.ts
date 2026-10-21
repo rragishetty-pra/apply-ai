@@ -1,4 +1,4 @@
-import { handle, json, requireUser } from "@/lib/auth";
+import { handle, HttpError, json, requireUser } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { mergePrefs, type Prefs } from "@/lib/types";
 
@@ -29,7 +29,11 @@ export const POST = handle(async (req) => {
   const p = body.prefs || {};
   const portals = list(p.portals).filter((x): x is Prefs["portals"][number] => ["linkedin", "naukri", "indeed"].includes(x));
 
+  const phone = str(p.phone).replace(/[^\d+]/g, "");
+  if (phone && !/^\+?\d{10,15}$/.test(phone)) throw new HttpError(400, "Enter a valid mobile number, e.g. +91 98765 43210.");
+
   const prefs: Prefs = mergePrefs({
+    phone,
     target_roles: list(p.target_roles).slice(0, 5),
     key_skills: list(p.key_skills),
     experience_years: num(p.experience_years),

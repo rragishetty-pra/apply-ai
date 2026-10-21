@@ -4,6 +4,7 @@ import { scoreAndTailor, vetEdits } from "./agents";
 import { applyEdits } from "./docx";
 import { HttpError } from "./auth";
 import { AIServiceError } from "./gemini";
+import { achievementsForPrompt } from "./achievements";
 import { mergePrefs, type Analysis, type Profile, type TailorEdits } from "./types";
 
 export interface TailorStep {
@@ -50,7 +51,12 @@ export async function tailorNext(userId: string): Promise<TailorStep> {
   if (!claimed?.length) return { done: false, remaining: await countPending(userId) };
 
   try {
-    const ans = await scoreAndTailor(profile, prefs, next);
+    const { data: ach } = await db
+      .from("achievements")
+      .select("kind, title, issuer, date_text, description")
+      .eq("user_id", userId)
+      .eq("status", "confirmed");
+    const ans = await scoreAndTailor(profile, prefs, next, achievementsForPrompt(ach || []));
     const pct = clamp(Math.round(Number(ans.match_percent) || 0), 0, 100);
     const verdict = pct >= prefs.match_threshold && ans.verdict !== "skip" ? "match" : ans.verdict === "match" ? "stretch" : ans.verdict;
     const analysis: Analysis = {
@@ -61,6 +67,7 @@ export async function tailorNext(userId: string): Promise<TailorStep> {
       must_haves_met: ans.must_haves_met || "",
       summary: ans.summary || "",
       skip_reason: ans.skip_reason,
+      key_gaps: (ans.key_gaps || []).slice(0, 3),
     };
 
     const update: Record<string, unknown> = {

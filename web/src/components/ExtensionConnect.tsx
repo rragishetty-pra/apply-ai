@@ -11,7 +11,7 @@ const PORTALS = [
 ];
 
 /** Talks to the Apply.ai Chrome extension through window.postMessage (its content script listens on this site). */
-function ask<T>(type: string, payload: Record<string, unknown> = {}, timeoutMs = 90_000): Promise<T> {
+export function ask<T>(type: string, payload: Record<string, unknown> = {}, timeoutMs = 90_000): Promise<T> {
   return new Promise((resolve, reject) => {
     const id = Math.random().toString(36).slice(2);
     const onMsg = (e: MessageEvent) => {
@@ -33,10 +33,20 @@ function ask<T>(type: string, payload: Record<string, unknown> = {}, timeoutMs =
 export function useExtension() {
   const [installed, setInstalled] = useState(false);
   useEffect(() => {
-    const check = () => setInstalled(document.documentElement.dataset.applyaiExtension === "1");
+    let alive = true;
+    let found = false;
+    const check = async () => {
+      if (found) return;
+      if (document.documentElement.dataset.applyaiExtension === "1") found = true;
+      else found = await ask("PING", {}, 1200).then(() => true, () => false);
+      if (alive && found) setInstalled(true);
+    };
     check();
-    const t = setInterval(check, 1000);
-    return () => clearInterval(t);
+    const t = setInterval(check, 2000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
   }, []);
   return installed;
 }
