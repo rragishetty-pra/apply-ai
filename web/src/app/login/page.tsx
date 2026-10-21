@@ -32,20 +32,20 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center px-4">
+    <div className="min-h-screen grid place-items-center px-4 bg-grape" style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.18) 1.2px, transparent 1.4px)", backgroundSize: "22px 22px" }}>
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8"><Logo /></div>
+        <div className="text-center mb-8"><Logo light /></div>
         <div className="card p-7">
           {sent ? (
             <div className="text-center">
-              <p className="serif text-3xl mb-2">Check your email</p>
+              <p className="display text-3xl mb-2">Check your email</p>
               <p className="text-sm text-muted">We sent a sign-in link to <b>{email}</b>. Open it on this device.</p>
               <button className="btn-ghost mt-6 w-full" onClick={() => setSent(false)}>Use a different email</button>
             </div>
           ) : (
             <form onSubmit={send} className="space-y-4">
               <div>
-                <p className="serif text-3xl mb-1">Sign in</p>
+                <p className="display text-3xl mb-1">Sign in</p>
                 <p className="text-sm text-muted">No password — we’ll email you a link.</p>
               </div>
               <input className="input" type="email" required placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />

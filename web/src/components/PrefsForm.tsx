@@ -20,10 +20,10 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   return (
     <label className="flex items-center gap-3 cursor-pointer select-none">
       <span
-        className={`relative h-6 w-10 rounded-full transition ${checked ? "bg-accent" : "bg-line"}`}
+        className={`relative h-6 w-10 rounded-full border-2 border-ink transition ${checked ? "bg-accent" : "bg-line"}`}
         onClick={() => onChange(!checked)}
       >
-        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? "left-[18px]" : "left-0.5"}`} />
+        <span className={`absolute top-0 h-5 w-5 rounded-full bg-white border-2 border-ink transition-all ${checked ? "left-[16px]" : "left-0"}`} />
       </span>
       <span className="text-sm">{label}</span>
     </label>
@@ -42,7 +42,7 @@ export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange:
   return (
     <div className="space-y-8">
       <section className="space-y-4">
-        <h3 className="serif text-2xl">What are you looking for?</h3>
+        <h3 className="display text-2xl">What are you looking for?</h3>
         <div>
           <label className="label">Job titles to search</label>
           <ListInput value={prefs.target_roles} onChange={(v) => set("target_roles", v)} placeholder="e.g. ETL Test Lead, Senior Data QA Engineer" />
@@ -65,7 +65,7 @@ export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange:
       </section>
 
       <section className="space-y-4">
-        <h3 className="serif text-2xl">Where?</h3>
+        <h3 className="display text-2xl">Where?</h3>
         <div>
           <label className="label">Cities</label>
           <ListInput value={prefs.locations} onChange={(v) => set("locations", v)} placeholder="e.g. Hyderabad, Bengaluru" />
@@ -81,20 +81,20 @@ export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange:
       </section>
 
       <section className="space-y-4">
-        <h3 className="serif text-2xl">Your rules</h3>
+        <h3 className="display text-2xl">Your rules</h3>
         <div>
           <label className="label">Never show jobs from</label>
           <ListInput value={prefs.exclude_companies} onChange={(v) => set("exclude_companies", v)} placeholder="e.g. your current and past employers" />
         </div>
         <div>
           <label className="label">Tailor a CV when the match is at least {prefs.match_threshold}%</label>
-          <input type="range" min={50} max={90} step={5} value={prefs.match_threshold} onChange={(e) => set("match_threshold", Number(e.target.value))} className="w-full accent-[#1f6f5c]" />
+          <input type="range" min={50} max={90} step={5} value={prefs.match_threshold} onChange={(e) => set("match_threshold", Number(e.target.value))} className="w-full accent-[#ff4d8d]" />
           <p className="hint">Jobs a little below this are kept as “stretch” jobs with the skills they ask for, so you know what to learn.</p>
         </div>
       </section>
 
       <section className="space-y-4">
-        <h3 className="serif text-2xl">Hunter’s schedule</h3>
+        <h3 className="display text-2xl">Hunter’s schedule</h3>
         <div>
           <span className="label">Portals to search</span>
           <div className="flex flex-wrap gap-2">
@@ -105,7 +105,7 @@ export default function PrefsForm({ prefs, onChange }: { prefs: Prefs; onChange:
                   key={p.id}
                   type="button"
                   onClick={() => set("portals", on ? prefs.portals.filter((x) => x !== p.id) : [...prefs.portals, p.id])}
-                  className={`chip px-3.5 py-1.5 text-sm border ${on ? "bg-ink text-white border-ink" : "bg-card border-line text-muted"}`}
+                  className={`chip px-4 py-1.5 text-sm border-2 ${on ? "bg-ink text-white border-ink shadow-[2px_2px_0_var(--color-accent)]" : "bg-card border-ink/30 text-muted"}`}
                 >
                   {p.name}
                 </button>

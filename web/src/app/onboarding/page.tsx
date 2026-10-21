@@ -96,7 +96,7 @@ export default function Onboarding() {
         <ol className="flex gap-2 mb-8">
           {STEPS.map((s, i) => (
             <li key={s} className="flex-1">
-              <div className={`h-1 rounded-full ${i <= step ? "bg-ink" : "bg-line"}`} />
+              <div className={`h-2 rounded-full border-2 border-ink ${i <= step ? "bg-accent" : "bg-white"}`} />
               <p className={`text-xs mt-2 ${i === step ? "text-ink font-medium" : "text-muted"}`}>{s}</p>
             </li>
           ))}
@@ -105,7 +105,7 @@ export default function Onboarding() {
         <div className="card p-6 sm:p-8">
           {step === 0 && (
             <div>
-              <h1 className="serif text-4xl mb-2">Start with your CV</h1>
+              <h1 className="display text-5xl mb-2">Start with your CV</h1>
               <p className="text-muted mb-6">
                 A Word file (.docx) works best — Tailor edits your own file, so every tailored CV keeps your layout. PDFs work too, but you’ll get wording suggestions instead of ready files.
               </p>
@@ -117,7 +117,7 @@ export default function Onboarding() {
                   const f = e.dataTransfer.files?.[0];
                   if (f) upload(f);
                 }}
-                className="cursor-pointer rounded-2xl border-2 border-dashed border-line hover:border-ink/30 bg-paper p-10 text-center transition"
+                className="cursor-pointer rounded-2xl border-2 border-dashed border-ink/40 hover:border-ink hover:bg-zest/30 bg-paper p-10 text-center transition"
               >
                 {uploading ? (
                   <p className="text-muted">Reading your CV…</p>
@@ -142,7 +142,7 @@ export default function Onboarding() {
 
           {step === 1 && (
             <div>
-              <h1 className="serif text-4xl mb-2">A few questions</h1>
+              <h1 className="display text-5xl mb-2">A few questions</h1>
               <p className="text-muted mb-8">We filled in what we could from your CV. Check it and change anything that’s off.</p>
               <PrefsForm prefs={prefs} onChange={setPrefs} />
               <div className="mt-8 flex justify-between">
@@ -154,7 +154,7 @@ export default function Onboarding() {
 
           {step === 2 && (
             <div>
-              <h1 className="serif text-4xl mb-2">Connect your Chrome</h1>
+              <h1 className="display text-5xl mb-2">Connect your Chrome</h1>
               <p className="text-muted mb-8">
                 Hunter searches the job portals from your own Chrome, where you’re already signed in. This keeps your passwords private and your accounts safe.
               </p>
@@ -168,7 +168,7 @@ export default function Onboarding() {
 
           {step === 3 && (
             <div className="text-center py-6">
-              <h1 className="serif text-4xl mb-3">You’re set</h1>
+              <h1 className="display text-5xl mb-3">You’re set</h1>
               <p className="text-muted max-w-md mx-auto mb-8">
                 Hunter will run{prefs.daily_run_hour !== null ? ` every day around ${((prefs.daily_run_hour + 11) % 12) + 1} ${prefs.daily_run_hour < 12 ? "AM" : "PM"}` : " when you click Run Hunter in the extension"}.
                 Tailor follows straight after, and everything lands on your dashboard.

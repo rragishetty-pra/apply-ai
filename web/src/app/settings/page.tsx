@@ -61,7 +61,7 @@ export default function Settings() {
 
   return (
     <Shell>
-      <h1 className="serif text-4xl mb-8">Settings</h1>
+      <h1 className="display text-4xl mb-8">Settings</h1>
       <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
         <div className="card p-6 sm:p-8">
           <PrefsForm prefs={prefs} onChange={setPrefs} />
@@ -73,13 +73,13 @@ export default function Settings() {
 
         <div className="space-y-6">
           <div className="card p-6">
-            <p className="serif text-2xl mb-2">Your CV</p>
+            <p className="display text-2xl mb-2">Your CV</p>
             <p className="text-sm text-muted mb-4">{cv || "No CV uploaded"}</p>
             <button className="btn-ghost w-full" onClick={() => fileRef.current?.click()}>Replace CV</button>
             <input ref={fileRef} type="file" accept=".docx,.pdf" hidden onChange={(e) => e.target.files?.[0] && replaceCv(e.target.files[0])} />
           </div>
           <div className="card p-6">
-            <p className="serif text-2xl mb-4">Chrome extension</p>
+            <p className="display text-2xl mb-4">Chrome extension</p>
             <ExtensionConnect initialStatus={portalStatus} compact />
             <button className="text-sm text-rose mt-5" onClick={disconnect}>Disconnect all extensions</button>
           </div>

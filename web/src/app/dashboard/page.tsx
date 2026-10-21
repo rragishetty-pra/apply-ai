@@ -5,6 +5,8 @@ import { api } from "@/lib/supabase-browser";
 import { useAuth } from "@/components/useAuth";
 import Shell from "@/components/Shell";
 import { useExtension } from "@/components/ExtensionConnect";
+import { JobTicker } from "@/components/Trending";
+import type { TickerJob } from "@/lib/stats";
 import type { Job, Prefs } from "@/lib/types";
 
 interface ProfileLite {
@@ -48,6 +50,11 @@ export default function Dashboard() {
   const [tailoring, setTailoring] = useState<string | null>(null);
   const [hunterMsg, setHunterMsg] = useState<string | null>(null);
   const stopRef = useRef(false);
+  const [ticker, setTicker] = useState<TickerJob[]>([]);
+
+  useEffect(() => {
+    fetch("/api/stats/today").then((r) => r.json()).then((s) => setTicker(s.ticker || [])).catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     const [{ profile }, { jobs }] = await Promise.all([
@@ -149,10 +156,16 @@ export default function Dashboard() {
     <Shell>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <p className="text-sm text-muted">Welcome back{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}</p>
-          <h1 className="serif text-4xl">Your job pipeline</h1>
+          <p className="font-bold text-muted mb-2">Hey{profile.full_name ? ` ${profile.full_name.split(" ")[0]}` : ""}, here&apos;s your hunt</p>
+          <h1 className="display text-5xl sm:text-6xl">Your pipeline</h1>
         </div>
       </div>
+
+      {ticker.length > 0 && (
+        <div className="mb-8 -mx-4 sm:mx-0 sm:rounded-full sm:overflow-hidden sm:border-2 sm:border-ink">
+          <JobTicker jobs={ticker} tone="ink" />
+        </div>
+      )}
 
       {/* Agents */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -177,20 +190,20 @@ export default function Dashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto mb-4 border-b border-line">
+      <div className="flex gap-2 overflow-x-auto mb-5 pb-1">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-3.5 py-2.5 text-sm whitespace-nowrap border-b-2 -mb-px ${tab === t.id ? "border-ink text-ink font-medium" : "border-transparent text-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap border-2 border-ink transition ${tab === t.id ? "bg-ink text-white shadow-[3px_3px_0_var(--color-accent)]" : "bg-white text-ink hover:bg-zest"}`}
           >
-            {t.label} <span className="text-muted">{counts[t.id]}</span>
+            {t.label} <span className={tab === t.id ? "text-zest" : "text-muted"}>{counts[t.id]}</span>
           </button>
         ))}
       </div>
 
       {visible.length === 0 ? (
-        <div className="card p-10 text-center text-muted">
+        <div className="card-flat border-dashed p-10 text-center text-muted">
           {jobs.length === 0
             ? "No jobs yet. Run Hunter from the card above (or the extension), and new jobs will show up here."
             : "Nothing in this list right now."}
@@ -206,12 +219,15 @@ export default function Dashboard() {
   );
 }
 
+const AGENT_TILE: Record<string, string> = { Hunter: "bg-zest", Tailor: "bg-accent", Applier: "bg-ice", Networker: "bg-tangerine" };
+
 function AgentCard({ name, live, detail, children }: { name: string; live?: boolean; detail: string; children?: React.ReactNode }) {
   return (
-    <div className={`card p-5 flex flex-col ${live ? "" : "opacity-70"}`}>
+    <div className={`card p-5 flex flex-col ${live ? "" : "bg-card/60 shadow-none"}`}>
+      <span className={`${AGENT_TILE[name]} h-3 w-14 rounded-full border-2 border-ink mb-4`} aria-hidden />
       <div className="flex items-center justify-between mb-1">
-        <p className="serif text-2xl">{name}</p>
-        <span className={`chip ${live ? "bg-accent-soft text-accent" : "bg-line/60 text-muted"}`}>{live ? "Live" : "Coming next"}</span>
+        <p className="display text-2xl">{name}</p>
+        <span className={`chip border-2 border-ink ${live ? "bg-accent text-ink" : "bg-white text-muted"}`}>{live ? "Live" : "Up next"}</span>
       </div>
       <p className="text-sm text-muted mb-4 flex-1">{detail}</p>
       {children}
@@ -220,18 +236,18 @@ function AgentCard({ name, live, detail, children }: { name: string; live?: bool
 }
 
 function StatusChip({ job }: { job: Job }) {
-  if (job.applied) return <span className="chip bg-ink text-white">Applied</span>;
+  if (job.applied) return <span className="chip bg-ink text-white border-2 border-ink">Applied</span>;
   const map: Record<string, [string, string]> = {
-    tailored: ["Tailored", "bg-accent-soft text-accent"],
-    stretch: ["Stretch", "bg-amber-soft text-amber"],
-    skipped: ["Skipped", "bg-line/60 text-muted"],
-    found: ["Reading job…", "bg-line/60 text-muted"],
-    pending: ["Waiting for Tailor", "bg-line/60 text-muted"],
-    scoring: ["Tailoring…", "bg-line/60 text-muted"],
-    error: ["Problem", "bg-rose-soft text-rose"],
+    tailored: ["Tailored", "bg-accent text-ink"],
+    stretch: ["Stretch", "bg-tangerine text-ink"],
+    skipped: ["Skipped", "bg-paper text-muted"],
+    found: ["Reading job…", "bg-paper text-muted"],
+    pending: ["Waiting for Tailor", "bg-paper text-muted"],
+    scoring: ["Tailoring…", "bg-paper text-muted"],
+    error: ["Problem", "bg-rose text-white"],
   };
-  const [label, cls] = map[job.status] || [job.status, "bg-line/60 text-muted"];
-  return <span className={`chip ${cls}`}>{label}</span>;
+  const [label, cls] = map[job.status] || [job.status, "bg-paper text-muted"];
+  return <span className={`chip border-2 border-ink ${cls}`}>{label}</span>;
 }
 
 function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, b: Record<string, unknown>) => Promise<void>; onDownload: (id: string) => Promise<void> }) {
@@ -242,9 +258,9 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
   return (
     <div className="card">
       <div className="p-4 sm:p-5 flex flex-wrap items-center gap-4">
-        <div className="w-14 text-center shrink-0">
+        <div className={`w-16 h-16 shrink-0 grid place-items-center rounded-2xl border-2 border-ink ${job.status === "tailored" ? "bg-accent" : job.status === "stretch" ? "bg-zest" : "bg-paper"}`}>
           {job.match_percent !== null ? (
-            <p className={`serif text-3xl leading-none ${job.status === "tailored" ? "text-accent" : job.status === "stretch" ? "text-amber" : "text-muted"}`}>
+            <p className={`display text-3xl leading-none ${job.status === "tailored" ? "text-ink" : job.status === "stretch" ? "text-amber" : "text-muted"}`}>
               {job.match_percent}<span className="text-base">%</span>
             </p>
           ) : (
@@ -252,9 +268,10 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
           )}
         </div>
         <div className="flex-1 min-w-[200px]">
-          <button className="text-left font-medium hover:underline" onClick={() => setOpen(!open)}>{job.title}</button>
-          <p className="text-sm text-muted">
-            {[job.company, job.location, PORTAL_NAME[job.portal] || job.portal].filter(Boolean).join(" · ")}
+          <button className="text-left text-lg font-bold leading-snug hover:underline decoration-accent decoration-2 underline-offset-4" onClick={() => setOpen(!open)}>{job.title}</button>
+          <p className="text-sm text-muted flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5">
+            <span>{[job.company, job.location].filter(Boolean).join(", ")}</span>
+            <span className="chip bg-ice text-ink border border-ink/40">{PORTAL_NAME[job.portal] || job.portal}</span>
           </p>
         </div>
         <StatusChip job={job} />
@@ -266,7 +283,7 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
       </div>
 
       {open && (
-        <div className="border-t border-line p-4 sm:p-5 grid md:grid-cols-2 gap-6 text-sm">
+        <div className="border-t-2 border-ink p-4 sm:p-5 grid md:grid-cols-2 gap-6 text-sm">
           <div className="space-y-3">
             {a?.summary && <p>{a.summary}</p>}
             {a?.skip_reason && <p className="text-muted">Skipped: {a.skip_reason}</p>}
@@ -275,7 +292,7 @@ function JobRow({ job, onPatch, onDownload }: { job: Job; onPatch: (id: string, 
             {!!a?.matched?.length && (
               <div>
                 <p className="font-medium mb-1">You match</p>
-                <div className="flex flex-wrap gap-1.5">{a.matched.map((m) => <span key={m} className="chip bg-accent-soft text-accent">{m}</span>)}</div>
+                <div className="flex flex-wrap gap-1.5">{a.matched.map((m) => <span key={m} className="chip bg-accent-soft text-ink border border-accent">{m}</span>)}</div>
               </div>
             )}
             {!!a?.gaps?.length && (
