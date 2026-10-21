@@ -3,6 +3,7 @@ import { supabaseAdmin } from "./supabase-admin";
 import { scoreAndTailor, vetEdits } from "./agents";
 import { applyEdits } from "./docx";
 import { HttpError } from "./auth";
+import { AIServiceError } from "./gemini";
 import { mergePrefs, type Analysis, type Profile, type TailorEdits } from "./types";
 
 export interface TailorStep {
@@ -104,9 +105,11 @@ export async function tailorNext(userId: string): Promise<TailorStep> {
       job: { id: next.id, title: next.title, company: next.company, status: update.status as string, match_percent: pct },
     };
   } catch (e) {
-    if (e instanceof HttpError && e.status === 429) {
+    if (e instanceof AIServiceError) {
+      // The AI service is the problem, not this job: put it back in the queue untouched.
       await db.from("jobs").update({ status: "pending" }).eq("id", next.id);
-      return { done: false, remaining: await countPending(userId), rate_limited: true };
+      if (e.status === 429) return { done: false, remaining: await countPending(userId), rate_limited: true };
+      throw e; // surfaces the message on the dashboard / extension and stops the loop
     }
     const msg = e instanceof Error ? e.message : String(e);
     await db.from("jobs").update({ status: "error", error: msg.slice(0, 500) }).eq("id", next.id);
