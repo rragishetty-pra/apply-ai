@@ -54,20 +54,28 @@ export default function Achievements() {
 
   async function scan() {
     setBusy("scan");
-    setMsg("Reading your LinkedIn certifications, honours, recommendations and recent posts. This takes a minute or two…");
+    setMsg("Starting the scan…");
+    const started = Date.now();
+    // Show what the extension is doing while it reads LinkedIn in the background.
+    const tick = setInterval(async () => {
+      const secs = Math.round((Date.now() - started) / 1000);
+      const p = await ask<{ text: string } | null>("SCAN_PROGRESS", {}, 3000).catch(() => null);
+      setMsg(`${p?.text || "Working…"} (${secs}s)`);
+    }, 2000);
     try {
-      const r = await ask<{ found: number; read: number }>("SCAN_LINKEDIN", {}, 300_000);
+      const r = await ask<{ found: number; read: number }>("SCAN_LINKEDIN", {}, 180_000);
       setMsg(
         r.found
           ? `Found ${r.found} new item${r.found > 1 ? "s" : ""} on LinkedIn. Check them below and keep the ones that are right.`
           : r.read
           ? "Nothing new found on LinkedIn. Everything there is already in your list."
-          : "Your LinkedIn profile doesn't list certifications, honours or recommendations yet."
+          : "We couldn't find certifications, honours or recommendations on your LinkedIn profile. If you can see them there, tell us, as LinkedIn may have changed its pages."
       );
       await load();
     } catch (e) {
       setMsg((e as Error).message);
     } finally {
+      clearInterval(tick);
       setBusy(null);
     }
   }
@@ -165,8 +173,8 @@ export default function Achievements() {
           <div className="card p-6">
             <p className="text-xl font-bold tracking-tight mb-2">Find them on LinkedIn</p>
             <p className="text-sm text-muted mb-4 leading-relaxed">
-              We read your own LinkedIn certifications, honours, recommendations and recent posts about awards, in your
-              Chrome. You choose what to keep.
+              We read your own LinkedIn certifications, honours, recommendations and your posts (including certificate images), in a
+              background window of your Chrome. Usually under a minute. You choose what to keep.
             </p>
             {extension ? (
               <button className="btn-primary w-full" disabled={busy === "scan"} onClick={scan}>

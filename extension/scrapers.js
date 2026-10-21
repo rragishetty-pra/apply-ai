@@ -237,17 +237,27 @@ async function scrapeDetail(portal) {
 /** Read list entries from one of the user's own LinkedIn profile "details" pages or activity feed. */
 async function scrapeLinkedInList(kind) {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  for (let i = 0; i < 20 && !document.querySelector("main"); i++) await sleep(400);
-  // Load lazy items and expand "see more" text
-  for (let i = 0; i < 6; i++) {
+  const ready = () =>
+    kind === "posts"
+      ? document.querySelector(".feed-shared-update-v2, [data-urn*='activity']")
+      : document.querySelector("main li") || /nothing to see|haven.t added|no (certifications|honors|recommendations|courses)/i.test(document.body.innerText || "");
+  for (let i = 0; i < 16 && !ready(); i++) await sleep(500); // up to 8s for LinkedIn's app to render
+
+  // Load more entries only when LinkedIn shows a "Show more" button (a few rounds at most).
+  for (let i = 0; i < (kind === "posts" ? 3 : 4); i++) {
+    const more = document.querySelector("button.scaffold-finite-scroll__load-button, button[aria-label*='Show more results' i]");
+    if (!more && kind !== "posts") break;
+    if (more) more.click();
     window.scrollTo(0, document.body.scrollHeight);
-    await sleep(800);
-    document.querySelectorAll("button.scaffold-finite-scroll__load-button, button[aria-label*='Show more results' i]").forEach((b) => b.click());
+    await sleep(900);
   }
   document.querySelectorAll("button.inline-show-more-text__button, button[aria-label*='see more' i]").forEach((b) => b.click());
-  await sleep(600);
+  await sleep(400);
 
-  const clean = (t) => t.replace(/\n{2,}/g, "\n").split("\n").map((x) => x.trim()).filter((x, i, a) => x && a.indexOf(x) === i).join(" | ");
+  const clean = (t) =>
+    t.replace(/\n{2,}/g, "\n").split("\n").map((x) => x.trim())
+      .filter((x, i, a) => x && a.indexOf(x) === i && !/^(show credential|see credential|show all|see more|…see more|endorse)$/i.test(x))
+      .join(" | ");
   const items = [];
   const seen = new Set();
   const push = (t) => {
@@ -258,19 +268,19 @@ async function scrapeLinkedInList(kind) {
   };
 
   if (kind === "posts") {
-    const KEY = /(award|recogni|appreciat|certif|honou?r|kudos|spot|star performer|congrat|milestone|achiev|thank you .* team|promoted)/i;
+    const KEY = /(award|recogni|appreciat|certif|honou?r|kudos|spot|star performer|congrat|milestone|achiev|promoted)/i;
     document.querySelectorAll(".feed-shared-update-v2, [data-urn*='activity']").forEach((el) => {
       const t = el.innerText || "";
       if (KEY.test(t)) push(t);
     });
   } else {
     const main = document.querySelector("main") || document.body;
-    main.querySelectorAll("li.pvs-list__paged-list-item, li.artdeco-list__item, .pvs-list__item--line-separated, section li").forEach((el) => {
-      if (el.querySelector("li")) return; // only innermost entries
-      push(el.innerText);
-    });
+    // Each entry is an OUTER list item; its nested list holds sub-parts (skills, credential link), so keep it whole.
+    [...main.querySelectorAll("li")]
+      .filter((li) => !li.parentElement.closest("li"))
+      .forEach((li) => push(li.innerText));
   }
-  const empty = /nothing to see|haven.t added|no (certifications|honors|recommendations)/i.test(document.body.innerText || "");
+  const empty = !items.length && /nothing to see|haven.t added|no (certifications|honors|recommendations|courses)/i.test(document.body.innerText || "");
   return { url: location.href, items: items.slice(0, 40), empty };
 }
 
@@ -391,4 +401,66 @@ async function detectSignedIn() {
   if (loggedIn && !loggedOut) return "ok";
   if (loggedOut && !loggedIn) return "login_needed";
   return loggedIn ? "ok" : "unknown";
+}
+
+/** Read the user's own LinkedIn posts (activity → Posts), with certificate image links. */
+async function scrapeLinkedInPosts() {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const POST_SEL = ".feed-shared-update-v2, div[data-urn^='urn:li:activity'], div[data-id^='urn:li:activity']";
+  for (let i = 0; i < 16 && !document.querySelector(POST_SEL); i++) await sleep(500);
+
+  // Scroll until no new posts load (older posts such as 2022 need many rounds), max ~60 posts.
+  let last = 0;
+  let still = 0;
+  for (let i = 0; i < 25 && still < 3; i++) {
+    window.scrollTo(0, document.body.scrollHeight);
+    const more = [...document.querySelectorAll("button")].find((b) => /show more results/i.test(b.innerText || ""));
+    if (more) more.click();
+    await sleep(1100);
+    const n = document.querySelectorAll(POST_SEL).length;
+    still = n === last ? still + 1 : 0;
+    last = n;
+    if (n >= 60) break;
+  }
+  // Expand truncated post text ("…more")
+  document.querySelectorAll("button").forEach((b) => {
+    const t = (b.innerText || "").trim().toLowerCase();
+    if (t === "…more" || t === "...more" || t === "see more" || t === "more" || /see-more/.test(b.className)) b.click();
+  });
+  await sleep(600);
+
+  const KEY = /(certif|course|program|workshop|bootcamp|training|learning|completed|complete|award|recogni|appreciat|honou?r|kudos|spot|star performer|congrat|milestone|achiev|promoted|thank you)/i;
+  const posts = [];
+  const seen = new Set();
+  for (const el of document.querySelectorAll(POST_SEL)) {
+    if (el.parentElement && el.parentElement.closest(POST_SEL)) continue; // outer post only
+    const urn = el.getAttribute("data-urn") || el.getAttribute("data-id") || "";
+    if (urn && seen.has(urn)) continue;
+    seen.add(urn);
+    // Skip reshares of other people's posts
+    if (el.querySelector(".update-components-header, .feed-shared-header") && /reposted|shared this/i.test((el.querySelector(".update-components-header, .feed-shared-header") || {}).innerText || "")) continue;
+    const textEl = el.querySelector(".update-components-text, .feed-shared-update-v2__description, .feed-shared-text");
+    const text = ((textEl || el).innerText || "").replace(/\n{2,}/g, "\n").trim();
+    const date = ((el.querySelector(".update-components-actor__sub-description, .feed-shared-actor__sub-description") || {}).innerText || "").split("•")[0].trim();
+    const images = [...el.querySelectorAll("img")]
+      .filter((img) => {
+        const box = img.getBoundingClientRect();
+        const big = (img.naturalWidth || box.width) >= 300;
+        const avatar = img.closest(".update-components-actor, .feed-shared-actor, [class*='avatar' i], [class*='actor' i]");
+        return big && !avatar && /^https:\/\/media\.licdn\.com\//.test(img.currentSrc || img.src);
+      })
+      .map((img) => img.currentSrc || img.src)
+      .filter((u, i, a) => a.indexOf(u) === i)
+      .slice(0, 2);
+    if (!KEY.test(text) && !images.length) continue;
+    if (!KEY.test(text) && text.length > 600) continue; // long post with a photo but no achievement words
+    posts.push({
+      date,
+      text: text.slice(0, 2500),
+      url: urn ? `https://www.linkedin.com/feed/update/${urn}/` : "",
+      images,
+    });
+    if (posts.length >= 30) break;
+  }
+  return { url: location.href, posts };
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { askJSON } from "./gemini";
+import { askJSON, type Part } from "./gemini";
 import type { Achievement, AchievementKind } from "./types";
 
 export const KINDS: AchievementKind[] = ["certification", "award", "appreciation", "recommendation", "other"];
@@ -26,32 +26,55 @@ const key = (a: { title: string; issuer?: string | null }) =>
   `${a.title}|${a.issuer || ""}`.toLowerCase().replace(/[^a-z0-9|]/g, "");
 
 interface Section { section: string; items: string[] }
+export interface PostIn { date: string; text: string; url: string; images: { mime: string; data: string }[] }
 
-/** Turn raw text the extension read from the user's LinkedIn pages into achievement suggestions. */
-export async function parseLinkedIn(sections: Section[], existing: Pick<Achievement, "title" | "issuer">[]) {
+const RULES = `Return JSON {"achievements":[{kind,title,issuer,date_text,description,url}]} where kind is one of:
+"certification" (a credential, course or programme certificate, including "certificate of completion"),
+"award" (a formal award or honour), "appreciation" (recognition from an employer, manager or client, such as a
+"certificate of recognition", spot award or kudos), "recommendation" (a written recommendation someone gave them), "other".
+Rules:
+- Only THIS person's own achievements. Skip general posts, reshares, job ads, congratulations they gave to others,
+  and recommendations they wrote for others.
+- A post where they share a certificate (in the text OR in the attached image), or say they completed a course,
+  workshop or programme, IS an achievement. Read the certificate image: it usually shows the exact title, the issuer
+  (logo/organisation) and the date.
+- title: short and specific, e.g. "Generative AI Mastermind", "AI Tools and ChatGPT Workshop",
+  "Certificate of Recognition – Above and Beyond the Call of Duty". issuer: the organisation (e.g. "Outskill", "be10X", "VRIZE").
+- date_text: from the certificate if shown (e.g. "Aug 2022"), otherwise the post date.
+- description: one or two plain sentences on what it was for (for recommendations: a short faithful excerpt).
+- url: the post link if given.
+- If the same certificate appears twice, list it once. Do not invent anything.`;
+
+/** Turn what the extension read on the user's own LinkedIn into achievement suggestions. */
+export async function parseLinkedIn(sections: Section[], existing: Pick<Achievement, "title" | "issuer">[], posts: PostIn[] = []) {
   const blocks = sections
     .filter((x) => x.items?.length)
     .map((x) => `## ${x.section}\n` + x.items.slice(0, 40).map((t, i) => `[${i + 1}] ${t.slice(0, 1200)}`).join("\n"))
     .join("\n\n");
-  if (!blocks) return [];
+  if (!blocks && !posts.length) return [];
 
-  const out = await askJSON<{ achievements: Record<string, unknown>[] }>(
-    `You read text copied from a person's own LinkedIn profile pages and pull out their achievements.
-Return JSON {"achievements":[{kind,title,issuer,date_text,description,url}]} where kind is one of:
-"certification" (a credential or course certificate), "award" (a formal award or honour),
-"appreciation" (recognition from a manager, client or employer, e.g. a "spot award" post or kudos),
-"recommendation" (a written recommendation someone gave them), "other".
-Rules:
-- Only include things that are clearly about THIS person's own achievements. Skip their general posts,
-  reshares, job ads, congratulations they gave to others, and recommendations they wrote for others.
-- title: short (e.g. "AWS Certified Cloud Practitioner", "Star Performer Award", "Recommendation from Priya S.").
-- issuer: certifying body or company. date_text: as written ("Mar 2024"). description: one or two plain sentences
-  (for recommendations: a short faithful excerpt). url: only if a credential/post link appears in the text.
-- Do not invent anything.
+  const parts: Part[] = [
+    { text: `You read a person's own LinkedIn profile sections and posts and pull out their achievements.\n${RULES}\n\n${blocks.slice(0, 20000) || "(no profile sections found)"}` },
+  ];
+  let images = 0;
+  if (posts.length) {
+    parts.push({ text: "\n## Their own posts (with attached images where present)" });
+    for (const [i, p] of posts.slice(0, 30).entries()) {
+      parts.push({ text: `\nPOST ${i + 1} (posted ${p.date || "date unknown"})${p.url ? ` ${p.url}` : ""}:\n${p.text.slice(0, 1500)}` });
+      for (const img of p.images.slice(0, 2)) {
+        if (images >= 12) break;
+        parts.push({ inline_data: { mime_type: img.mime, data: img.data } });
+        images++;
+      }
+    }
+  }
 
-${blocks.slice(0, 30000)}`,
-    { temperature: 0.1 }
-  );
+  // Reading certificate images needs the main model; text-only can use the cheaper one.
+  const out = await askJSON<{ achievements: Record<string, unknown>[] }>(parts, {
+    temperature: 0.1,
+    tier: images ? "main" : "lite",
+    maxTokens: 4096,
+  });
 
   const seen = new Set(existing.map(key));
   const result = [];

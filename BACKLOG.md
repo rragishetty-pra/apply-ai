@@ -31,5 +31,7 @@ Items are roughly in priority order within each section. Move an item to "Done" 
 - Mock-interview scoring history in Coach.
 
 ## Done
+- 2026-10-22 — LinkedIn scan reads your own posts (scrolling back years) and the certificate images in them, not just profile sections.
+- 2026-10-22 — LinkedIn achievements scan fixed (read whole entries, not sub-items), made faster (pages in parallel, time caps) and shows live progress.
 - 2026-10-21 — Dashboard rebuilt as an application tracker (one status + next step per job); sign-in list and check cover every selected portal.
 - 2026-10-21 — Cost controls: Flash-Lite first-pass scoring, 25 pages per run by default, shared company research for Applier.

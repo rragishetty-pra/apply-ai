@@ -304,11 +304,39 @@ async function checkLogins(extra = []) {
 
 /* ──────────────────── LinkedIn achievements scan ──────────────────── */
 
+/** Fetch an image (LinkedIn CDN) and return a small JPEG as base64, max 1280px. */
+async function shrinkImage(url) {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) return null;
+  const bmp = await createImageBitmap(await res.blob());
+  const scale = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale);
+  const h = Math.round(bmp.height * scale);
+  const canvas = new OffscreenCanvas(w, h);
+  canvas.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.82 });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return { mime: "image/jpeg", data: btoa(bin) };
+}
+
 async function scanLinkedIn() {
   if (await get("running")) throw new Error("Hunter is running. Try the scan when it finishes.");
+  if (await get("scanning")) throw new Error("A LinkedIn scan is already running.");
+  const progress = (text) => set({ scanProgress: { text, at: Date.now() } });
+  await set({ scanning: true });
+  const alive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000); // keep the service worker awake
   const worker = await openWorker();
+  const tabs = [worker.tabId];
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]);
   try {
-    const me = await visit(worker.tabId, "https://www.linkedin.com/in/me/");
+    await progress("Opening your LinkedIn profile…");
+    const loaded = waitForLoad(worker.tabId, 15000);
+    await chrome.tabs.update(worker.tabId, { url: "https://www.linkedin.com/in/me/" });
+    await loaded;
+    await sleep(800);
+    const me = (await chrome.tabs.get(worker.tabId)).url || "";
     if (isLoginWall("linkedin", me) || !/linkedin\.com\/in\/[^/]+/.test(me)) {
       throw new Error("Sign in to LinkedIn in this Chrome first, then try again.");
     }
@@ -317,20 +345,68 @@ async function scanLinkedIn() {
       { section: "Licenses & certifications", url: `${base}/details/certifications/`, kind: "list" },
       { section: "Honors & awards", url: `${base}/details/honors/`, kind: "list" },
       { section: "Recommendations received", url: `${base}/details/recommendations/?detailScreenTabIndex=0`, kind: "list" },
-      { section: "Courses", url: `${base}/details/courses/`, kind: "list" },
-      { section: "Recent posts mentioning awards or recognition", url: `${base}/recent-activity/all/`, kind: "posts" },
+      { section: "Your posts", url: `${base}/recent-activity/shares/`, kind: "posts" },
     ];
-    const sections = [];
-    for (const p of pages) {
-      await visit(worker.tabId, p.url);
-      const r = await run(worker.tabId, scrapeLinkedInList, [p.kind]).catch(() => null);
-      sections.push({ section: p.section, items: (r && !r.empty && r.items) || [] });
-      await jitter(2500, 5000);
+
+    // Read the four pages side by side in the background window (each capped at 25 seconds).
+    await progress("Reading certifications, honours, recommendations and recent posts…");
+    let done = 0;
+    const sections = await Promise.all(
+      pages.map(async (p, i) => {
+        let tabId = worker.tabId;
+        if (i > 0) {
+          await sleep(i * 700); // stagger, so it looks like a person opening tabs
+          const t = await chrome.tabs.create({ windowId: worker.windowId, url: "about:blank", active: false });
+          tabId = t.id;
+          tabs.push(tabId);
+        }
+        const loaded = waitForLoad(tabId, 15000);
+        await chrome.tabs.update(tabId, { url: p.url });
+        await loaded;
+        if (p.kind === "posts") {
+          const r = await withTimeout(run(tabId, scrapeLinkedInPosts, []).catch(() => null), 60000);
+          done++;
+          await progress(`Read ${done} of ${pages.length} sections…`);
+          return { section: p.section, items: [], posts: (r && r.posts) || [] };
+        }
+        const r = await withTimeout(run(tabId, scrapeLinkedInList, [p.kind]).catch(() => null), 25000);
+        done++;
+        await progress(`Read ${done} of ${pages.length} sections…`);
+        return { section: p.section, items: (r && !r.empty && r.items) || [] };
+      })
+    );
+
+    // Certificate images: fetch in your browser, shrink, and send with the post text.
+    const rawPosts = sections.flatMap((x) => x.posts || []);
+    const withImages = rawPosts.filter((p) => p.images.length).length;
+    if (withImages) await progress(`Reading ${withImages} certificate image${withImages > 1 ? "s" : ""}…`);
+    let budget = 12;
+    const posts = [];
+    for (const p of rawPosts) {
+      const images = [];
+      for (const u of p.images) {
+        if (budget <= 0) break;
+        const img = await shrinkImage(u).catch(() => null);
+        if (img) {
+          images.push(img);
+          budget--;
+        }
+      }
+      posts.push({ ...p, images });
     }
-    const res = await api("/api/ext/linkedin-scan", { method: "POST", body: { sections } });
-    return { found: res.found, read: sections.reduce((n, x) => n + x.items.length, 0) };
+
+    const read = sections.reduce((n, x) => n + x.items.length, 0) + posts.length;
+    if (!read) return { found: 0, read: 0 };
+    await progress(`Found ${read} entries. Picking out your achievements…`);
+    const res = await api("/api/ext/linkedin-scan", {
+      method: "POST",
+      body: { sections: sections.map(({ section, items }) => ({ section, items })), posts },
+    });
+    return { found: res.found, read };
   } finally {
+    clearInterval(alive);
     await closeWorker(worker);
+    await set({ scanning: false, scanProgress: null });
   }
 }
 
@@ -454,6 +530,8 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           return checkLogins(msg.portals);
         case "SCAN_LINKEDIN":
           return scanLinkedIn();
+        case "SCAN_PROGRESS":
+          return (await get("scanProgress")) || null;
         case "FIND_PEOPLE":
           if (await get("running")) throw new Error("Hunter is running. Try again when it finishes.");
           return findPeople(String(msg.jobId || ""), String(msg.company || "").slice(0, 120), String(msg.role || "").slice(0, 160));
@@ -521,10 +599,10 @@ chrome.alarms.onAlarm.addListener(async (a) => {
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  set({ running: false });
+  set({ running: false, scanning: false });
   scheduleDaily();
 });
 chrome.runtime.onStartup.addListener(() => {
-  set({ running: false });
+  set({ running: false, scanning: false });
   scheduleDaily();
 });

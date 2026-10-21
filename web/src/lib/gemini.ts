@@ -16,8 +16,11 @@ const LITE_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"];
 let workingModel: string | null = null;
 let workingLite: string | null = null;
 
+/** A text or image part for multimodal requests. */
+export type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
+
 export async function askJSON<T>(
-  prompt: string,
+  prompt: string | Part[],
   opts: { temperature?: number; maxTokens?: number; tier?: "lite" | "main" } = {}
 ): Promise<T> {
   const key = process.env.GEMINI_API_KEY;
@@ -36,7 +39,7 @@ export async function askJSON<T>(
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: typeof prompt === "string" ? [{ text: prompt }] : prompt }],
         generationConfig: {
           temperature: opts.temperature ?? 0.3,
           maxOutputTokens: opts.maxTokens ?? 8192,
