@@ -48,6 +48,7 @@ export async function askJSON<T>(
     ...new Set((lite ? [workingLite, process.env.GEMINI_LITE_MODEL, ...LITE_MODELS, ...main] : main).filter(Boolean) as string[]),
   ];
   let lastError = "";
+  let busy = false;
 
   for (const model of candidates) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -74,6 +75,12 @@ export async function askJSON<T>(
     if (res.status === 429) {
       throw new AIServiceError(429, "The AI's free daily/minute limit was reached. Tailor will continue shortly.");
     }
+    if (res.status === 503 || res.status === 500) {
+      // Google says this model is overloaded right now: try the next model in the chain.
+      lastError = `model ${model} is busy`;
+      busy = true;
+      continue;
+    }
     if (!res.ok) {
       const body = await res.text();
       throw new AIServiceError(502, `The AI service had a problem (${res.status}). Try again in a few minutes. ${body.slice(0, 160)}`);
@@ -87,6 +94,7 @@ export async function askJSON<T>(
     return parseJSON<T>(text);
   }
 
+  if (busy) throw new AIServiceError(503, "Google's AI is very busy right now. Waiting a minute, then carrying on.");
   throw new AIServiceError(
     503,
     `No AI model is available (${lastError}). Set GEMINI_MODEL in Vercel to a current model, e.g. gemini-3.8-flash.`
@@ -126,6 +134,7 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
       continue;
     }
     if (res.status === 429) throw new AIServiceError(429, "The AI's free limit was reached. Try again in a minute.");
+    if (res.status === 503 || res.status === 500) continue; // overloaded: try the next model
     if (res.status === 400 || res.status === 403) {
       // Search grounding not available for this key/model → ungrounded answer
       const data = await askJSON<T>(prompt, opts);

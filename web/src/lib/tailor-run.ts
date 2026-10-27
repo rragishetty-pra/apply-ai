@@ -157,9 +157,14 @@ export async function tailorNext(userId: string): Promise<TailorStep> {
     };
   } catch (e) {
     if (e instanceof AIServiceError) {
-      // The AI service is the problem, not this job: put it back in the queue (the attempt still counts).
-      await db.from("jobs").update({ status: next.status }).eq("id", next.id);
-      if (e.status === 429) return { done: false, remaining: await countPending(userId), rate_limited: true };
+      // The AI service is the problem, not this job: put it back in the queue.
+      // Limits and overload aren't the job's fault, so those don't count as a failed attempt.
+      const notJob = e.status === 429 || e.status === 503;
+      await db
+        .from("jobs")
+        .update({ status: next.status, ...(notJob ? { tailor_attempts: next.tailor_attempts || 0 } : {}) })
+        .eq("id", next.id);
+      if (notJob) return { done: false, remaining: await countPending(userId), rate_limited: true };
       if (e.status === 504) {
         // Too slow this time: carry on with the next job instead of stopping the run.
         return {

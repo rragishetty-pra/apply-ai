@@ -146,7 +146,7 @@ export default function Dashboard() {
       }
       if (r.done) break;
       if (r.rate_limited) {
-        setTailoring(`AI limit reached — waiting a minute (${r.remaining} left)…`);
+        setTailoring(`AI busy or at its limit — waiting a minute (${r.remaining} left)…`);
         await new Promise((res) => setTimeout(res, 60_000));
         continue;
       }

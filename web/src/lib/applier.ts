@@ -193,7 +193,7 @@ export async function applierNext(userId: string, jobId?: string) {
       .eq("id", job.id);
     return { done: false, remaining: await count(), job: { id: job.id, title: job.title, company: job.company, route: pack.route } };
   } catch (e) {
-    if (e instanceof AIServiceError && e.status === 429) return { done: false, remaining: await count(), rate_limited: true };
+    if (e instanceof AIServiceError && (e.status === 429 || e.status === 503)) return { done: false, remaining: await count(), rate_limited: true };
     throw e;
   }
 }
