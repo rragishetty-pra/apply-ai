@@ -16,12 +16,28 @@ const LITE_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"];
 let workingModel: string | null = null;
 let workingLite: string | null = null;
 
+/**
+ * fetch with a time cap. Our API routes may run for 60s at most; giving up at 50s means the job
+ * goes back in the queue with a clear message instead of the server cutting the request off.
+ */
+async function timedFetch(url: string, init: RequestInit, ms = 50_000): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+  } catch (e) {
+    const name = (e as Error)?.name;
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new AIServiceError(504, "The AI took too long to answer. It will be retried on the next pass.");
+    }
+    throw new AIServiceError(502, `Couldn't reach the AI service (${(e as Error)?.message || e}).`);
+  }
+}
+
 /** A text or image part for multimodal requests. */
 export type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
 export async function askJSON<T>(
   prompt: string | Part[],
-  opts: { temperature?: number; maxTokens?: number; tier?: "lite" | "main" } = {}
+  opts: { temperature?: number; maxTokens?: number; tier?: "lite" | "main"; timeoutMs?: number } = {}
 ): Promise<T> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AIServiceError(500, "GEMINI_API_KEY is not set on the server.");
@@ -35,7 +51,7 @@ export async function askJSON<T>(
 
   for (const model of candidates) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const res = await fetch(url, {
+    const res = await timedFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
@@ -96,7 +112,7 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
 
   for (const model of candidates) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const res = await fetch(url, {
+    const res = await timedFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({

@@ -39,7 +39,7 @@ export const PORTALS: PortalInfo[] = [
     linkPattern: "hirist\\.tech/j/[^?#]*-\\d{5,}", loginPattern: "hirist\\.tech/login",
   },
   {
-    id: "instahyre", trial: true, name: "Instahyre", about: "Jobs matched to your Instahyre profile", defaultOn: false, needsLogin: true,
+    id: "instahyre", trial: true, name: "Instahyre", about: "Tech jobs; searched without sign-in", defaultOn: false, needsLogin: false,
     loginUrl: "https://www.instahyre.com/login/", homeUrl: "https://www.instahyre.com/candidate/opportunities/",
     linkPattern: "instahyre\\.com/job-\\d+", loginPattern: "instahyre\\.com/(login|signup)",
   },

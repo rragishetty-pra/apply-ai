@@ -62,7 +62,7 @@ export function jobStage(job: Job, contacts: Contact[] = [], now = Date.now()): 
 
   // Before scoring
   if (job.status === "found") return { key: "reading", label: "Reading job", detail: "Hunter will read the full posting on its next pass", tone: "muted", group: "progress", next: null, step: 0 };
-  if (job.status === "pending" || job.status === "scoring") return { key: "queued", label: "Waiting for Tailor", detail: "Scoring and tailoring next", tone: "muted", group: "progress", next: null, step: 0 };
+  if (["pending", "scoring", "to_tailor", "tailoring"].includes(job.status)) return { key: "queued", label: "Waiting for Tailor", detail: "Scoring and tailoring next", tone: "muted", group: "progress", next: null, step: 0 };
   if (job.status === "error") return { key: "problem", label: "Problem", detail: job.error || "Something went wrong reading this job", tone: "bad", group: "progress", next: { label: "Try again", kind: "retry" }, step: 0 };
   if (job.stage === "not_interested") return { key: "not_interested", label: "Not interested", detail: "", tone: "muted", group: "closed", next: null, step: 1 };
   if (job.status === "skipped") {

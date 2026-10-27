@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import AutoPair from "@/components/AutoPair";
 
 export function Logo({ className = "", light = false }: { className?: string; light?: boolean }) {
   return (
@@ -45,6 +46,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
       </header>
+      <AutoPair />
       <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
     </div>
   );

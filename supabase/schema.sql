@@ -238,3 +238,6 @@ create table if not exists public.company_research (
   researched_at timestamptz not null default now()
 );
 alter table public.company_research enable row level security;
+
+-- 007: Tailor retries
+alter table public.jobs add column if not exists tailor_attempts int not null default 0;

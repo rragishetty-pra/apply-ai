@@ -47,7 +47,7 @@ async function scrapeList(portal, linkPattern) {
   };
 
   if (portal === "linkedin") {
-    await waitFor('a[href*="/jobs/view/"], [data-job-id], [data-occludable-job-id]');
+    await waitFor('a[href*="/jobs/view/"], [data-job-id], [data-occludable-job-id], [componentkey^="job-card-component-ref-"]');
     await scrollList('a[href*="/jobs/view/"], [data-job-id]');
     const cards = document.querySelectorAll("[data-occludable-job-id], [data-job-id], li.jobs-search-results__list-item, .base-card");
     const anchors = document.querySelectorAll('a[href*="/jobs/view/"]');
@@ -69,6 +69,28 @@ async function scrapeList(portal, linkPattern) {
     };
     cards.forEach((c) => handle(c, c.querySelector('a[href*="/jobs/view/"]')));
     anchors.forEach((a) => handle(a.closest("li, .job-card-container, .base-card"), a));
+
+    // Newer "AI-powered" job search: no links or stable classes; each card carries
+    // componentkey="job-card-component-ref-<job id>" and reads title / company / location in order.
+    await waitFor('[componentkey^="job-card-component-ref-"]', 4000);
+    if (document.querySelector('[componentkey^="job-card-component-ref-"]')) {
+      await scrollList('[componentkey^="job-card-component-ref-"]');
+      for (const el of document.querySelectorAll('[componentkey^="job-card-component-ref-"]')) {
+        const id = (el.getAttribute("componentkey") || "").replace(/\D+/g, "");
+        if (!id) continue;
+        const lines = (el.innerText || "").split("\n").map((x) => x.trim()).filter(Boolean).filter((l) => !/^selected,|\(verified job\)$/i.test(l));
+        const d = lines.filter((l, i) => l !== lines[i - 1]);
+        push({
+          external_id: id,
+          url: `https://www.linkedin.com/jobs/view/${id}/`,
+          title: d[0] || "",
+          company: d[1] || "",
+          location: d[2] || "",
+          posted_text: (d.find((l) => /ago$/i.test(l)) || "").replace(/^posted\s*/i, ""),
+          snippet: "",
+        });
+      }
+    }
   }
 
   if (portal === "naukri") {
@@ -95,9 +117,32 @@ async function scrapeList(portal, linkPattern) {
   if (portal === "indeed") {
     await waitFor("a[data-jk], [data-jk]");
     await scrollList("a[data-jk]");
-    document.querySelectorAll("a[data-jk], [data-jk]").forEach((el) => {
+    // Indeed hides decoy links among the results (zero-size, tabindex -1, made-up ids). Opening one
+    // triggers its "verify you are human" check, so only real, visible cards are read.
+    const real = (el) => {
+      const r = el.getBoundingClientRect();
+      const jk = el.getAttribute("data-jk") || "";
+      return !!el.offsetParent && r.width > 0 && r.height > 0 && el.getAttribute("tabindex") !== "-1" && /^[0-9a-f]{16}$/.test(jk) && !/0123|1234|2345|3456|4567|5678|6789|789a|89ab|9abc|abcd|bcde|cdef/.test(jk);
+    };
+    const DESC = "#jobDescriptionText, .simple-job-description-html, [class*='job-description-html']";
+    let prev = (document.querySelector(DESC) || {}).innerText || "";
+    let reads = 0;
+    for (const el of [...document.querySelectorAll("a[data-jk]")].filter(real)) {
       const jk = el.getAttribute("data-jk");
       const card = el.closest(".job_seen_beacon, td.resultContent, li, .result") || el;
+      // Read the full description from the side pane (no job page to open = no bot check).
+      let description = "";
+      if (reads < 15) {
+        reads++;
+        el.click();
+        for (let i = 0; i < 15; i++) {
+          await sleep(400);
+          const d = document.querySelector(DESC);
+          if (d && d.innerText.length > 100 && d.innerText !== prev) { description = d.innerText.trim(); break; }
+        }
+        if (description) prev = description;
+        await sleep(900 + Math.random() * 900);
+      }
       push({
         external_id: jk,
         url: `${location.origin}/viewjob?jk=${jk}`,
@@ -106,12 +151,77 @@ async function scrapeList(portal, linkPattern) {
         location: txt(card, '[data-testid="text-location"]|.companyLocation'),
         posted_text: txt(card, '[data-testid="myJobsStateDate"]|.date'),
         snippet: txt(card, ".job-snippet|[data-testid='jobsnippet_footer']"),
+        description: description.slice(0, 20000),
+      });
+    }
+  }
+
+  // foundit: result cards are clickable boxes with no links; the card's id is the job id.
+  if (portal === "foundit") {
+    // Results load after the page; wait for real job cards (or foundit's "no result" message).
+    for (let i = 0; i < 40; i++) {
+      if (document.querySelector(".cardContainer[id]") || /sorry no result found/i.test(document.body.innerText || "")) break;
+      await sleep(500);
+    }
+    await sleep(1500);
+    await scrollList(".cardContainer");
+    const slugify = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    document.querySelectorAll(".cardContainer[id]").forEach((card) => {
+      const id = card.id;
+      if (!/^\d{5,}$/.test(id)) return;
+      const lines = (card.innerText || "").split("\n").map((x) => x.trim()).filter(Boolean);
+      const title = txt(card, ".jobTitle") || lines[0] || "";
+      const company = txt(card, ".companyName") || lines[1] || "";
+      const loc = txt(card, ".details.location|[class*='location' i]") || lines.find((l) => /india|remote|work from home|,/i.test(l) && l !== title) || "";
+      push({
+        external_id: id,
+        url: `https://www.foundit.in/job/${[slugify(title), slugify(company), slugify(loc.split(",")[0])].filter(Boolean).join("-")}-${id}`,
+        title,
+        company,
+        location: loc,
+        posted_text: (lines.find((l) => /^posted/i.test(l)) || "").replace(/^posted\s*/i, ""),
+        snippet: "",
       });
     });
   }
 
+  // Instahyre: its public job search (no sign-in needed). The page's own search API returns
+  // jobs by skill/title but ignores the city, so we filter by city here.
+  if (portal === "instahyre") {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("aai_q") || "";
+    const city = (params.get("aai_l") || "").toLowerCase();
+    const ALIAS = { bengaluru: "bangalore", gurugram: "gurgaon", "new delhi": "delhi", mumbai: "mumbai", "navi mumbai": "mumbai" };
+    const want = ALIAS[city] || city;
+    const remote = /remote|work from home/.test(want);
+    for (let offset = 0; offset < 60 && q; offset += 20) {
+      let r;
+      try {
+        r = await fetch(`/api/v1/job_search?skills=${encodeURIComponent(q)}&offset=${offset}`, { credentials: "include" }).then((x) => x.json());
+      } catch { break; }
+      const objs = (r && r.objects) || [];
+      for (const o of objs) {
+        const locs = String(o.locations || "");
+        const l = locs.toLowerCase();
+        if (want && !remote && !(l.includes(want) || (want === "delhi" && /noida|gurgaon|delhi/.test(l)))) continue;
+        if (remote && !/remote|work from home|anywhere/.test(l)) continue;
+        push({
+          external_id: String(o.id),
+          url: o.public_url || `https://www.instahyre.com/job-${o.id}/`,
+          title: o.title || o.candidate_title || "",
+          company: (o.employer && o.employer.company_name) || "",
+          location: locs,
+          posted_text: "",
+          snippet: Array.isArray(o.keywords) ? o.keywords.slice(0, 12).join(", ") : "",
+        });
+      }
+      if (objs.length < 20) break;
+      await sleep(800);
+    }
+  }
+
   // Generic reader for every other portal: job-detail links that match the portal's URL pattern.
-  if (!["linkedin", "naukri", "indeed"].includes(portal) && linkPattern) {
+  if (!["linkedin", "naukri", "indeed", "foundit", "instahyre"].includes(portal) && linkPattern) {
     const re = new RegExp(linkPattern, "i");
     const CITY = /(bengaluru|bangalore|hyderabad|pune|mumbai|chennai|gurugram|gurgaon|noida|delhi|kolkata|ahmedabad|kochi|coimbatore|remote|work from home|hybrid|india)/i;
     const POSTED = /(\d+\+?\s*(day|days|hour|hours|hr|hrs|week|weeks|month|months)\s*ago|today|just now|yesterday|few hours)/i;
@@ -185,7 +295,7 @@ async function scrapeDetail(portal) {
       location: "[class*='jhc__location'] a|[class*='location'] a|.location",
     },
     indeed: {
-      desc: "#jobDescriptionText",
+      desc: "#jobDescriptionText|.simple-job-description-html|[class*='job-description-html']",
       title: "[data-testid='jobsearch-JobInfoHeader-title']|h1",
       company: "[data-testid='inlineHeader-companyName']|[data-company-name]",
       location: "[data-testid='inlineHeader-companyLocation']|[data-testid='job-location']",
@@ -193,6 +303,14 @@ async function scrapeDetail(portal) {
   };
 
   const href = location.href;
+  // Bot checks and dead pages: report them instead of saving their text as the job.
+  const pageText = (document.title + " " + ((document.querySelector("h1") || {}).innerText || "")).toLowerCase();
+  if (/additional verification required|just a moment|verify you are human|are you a robot|security check|access denied/.test(pageText)) {
+    return { description: "", problem: "bot_check" };
+  }
+  if (/can.t find this page|page not found|job (has )?expired|no longer (available|accepting)|job not found|404/.test(pageText)) {
+    return { description: "", problem: "gone" };
+  }
   if (/linkedin\.com\/(login|authwall|checkpoint|signup)/.test(href) || /naukri\.com\/nlogin/.test(href) || /secure\.indeed\.com\/auth/.test(href)) {
     return { description: "", problem: "login_needed" };
   }
@@ -208,6 +326,28 @@ async function scrapeDetail(portal) {
     const more = document.querySelector("button.jobs-description__footer-button, button[aria-label*='see more' i], .show-more-less-html__button");
     if (more) { more.click(); await sleep(500); }
     if (descEl) descEl = first(s.desc);
+  }
+
+  // LinkedIn's newer job page has no stable class names: read the text under "About the job".
+  if (!descEl && portal === "linkedin") {
+    const more = [...document.querySelectorAll("button")].find((b) => /^(…|\.\.\.)\s*more$|^see more$/i.test((b.innerText || "").trim()));
+    if (more) { more.click(); await sleep(800); }
+    const t = document.body.innerText || "";
+    const i = t.search(/About the job/i);
+    if (i >= 0) {
+      const rest = t.slice(i + "About the job".length);
+      const end = rest.search(/\n(Set alert for similar jobs|About the company|Show less|(…|\.\.\.) more\n)/);
+      const description = (end > 0 ? rest.slice(0, end) : rest.slice(0, 8000)).replace(/\n{3,}/g, "\n\n").trim();
+      const parts = document.title.split(" | ");
+      const locLine = t.split("\n").find((l) => / · (Reposted|Posted|\d+ (day|week|hour|month)s? ago)/i.test(l)) || "";
+      return {
+        description,
+        title: parts.length >= 3 ? parts[0].trim() : "",
+        company: parts.length >= 3 ? parts[1].trim() : "",
+        location: locLine.split(" · ")[0].trim().slice(0, 120),
+        problem: description.length >= 200 ? null : "no_description",
+      };
+    }
   }
 
   if (!descEl) {
@@ -414,7 +554,7 @@ async function scrapeLinkedInPosts() {
   let still = 0;
   for (let i = 0; i < 25 && still < 3; i++) {
     window.scrollTo(0, document.body.scrollHeight);
-    const more = [...document.querySelectorAll("button")].find((b) => /show more results/i.test(b.innerText || ""));
+    const more = [...document.querySelectorAll("main button, button.scaffold-finite-scroll__load-button")].find((b) => /^show more( results)?$/i.test((b.innerText || "").trim()));
     if (more) more.click();
     await sleep(1100);
     const n = document.querySelectorAll(POST_SEL).length;
@@ -423,10 +563,12 @@ async function scrapeLinkedInPosts() {
     if (n >= 60) break;
   }
   // Expand truncated post text ("…more")
-  document.querySelectorAll("button").forEach((b) => {
-    const t = (b.innerText || "").trim().toLowerCase();
-    if (t === "…more" || t === "...more" || t === "see more" || t === "more" || /see-more/.test(b.className)) b.click();
-  });
+  document.querySelectorAll(POST_SEL).forEach((post) =>
+    post.querySelectorAll("button").forEach((b) => {
+      const t = (b.innerText || "").trim().toLowerCase();
+      if (t === "…more" || t === "...more" || t === "see more" || /see-more/.test(b.className)) b.click();
+    })
+  );
   await sleep(600);
 
   const KEY = /(certif|course|program|workshop|bootcamp|training|learning|completed|complete|award|recogni|appreciat|honou?r|kudos|spot|star performer|congrat|milestone|achiev|promoted|thank you)/i;
@@ -441,15 +583,17 @@ async function scrapeLinkedInPosts() {
     if (el.querySelector(".update-components-header, .feed-shared-header") && /reposted|shared this/i.test((el.querySelector(".update-components-header, .feed-shared-header") || {}).innerText || "")) continue;
     const textEl = el.querySelector(".update-components-text, .feed-shared-update-v2__description, .feed-shared-text");
     const text = ((textEl || el).innerText || "").replace(/\n{2,}/g, "\n").trim();
-    const date = ((el.querySelector(".update-components-actor__sub-description, .feed-shared-actor__sub-description") || {}).innerText || "").split("•")[0].trim();
+    // Exact post date from the activity id (LinkedIn ids carry a millisecond timestamp in the top bits).
+    let date = "";
+    try {
+      const id = (urn.match(/(\d{15,})/) || [])[1];
+      if (id) date = new Date(Number(BigInt(id) >> 22n)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    } catch {}
+    if (!date) date = ((el.querySelector(".update-components-actor__sub-description, .feed-shared-actor__sub-description") || {}).innerText || "").split("•")[0].trim();
+    // Post images live on LinkedIn's "feedshare" CDN path; match by URL (images in a background window may not have loaded yet).
     const images = [...el.querySelectorAll("img")]
-      .filter((img) => {
-        const box = img.getBoundingClientRect();
-        const big = (img.naturalWidth || box.width) >= 300;
-        const avatar = img.closest(".update-components-actor, .feed-shared-actor, [class*='avatar' i], [class*='actor' i]");
-        return big && !avatar && /^https:\/\/media\.licdn\.com\//.test(img.currentSrc || img.src);
-      })
-      .map((img) => img.currentSrc || img.src)
+      .map((img) => img.getAttribute("src") || img.getAttribute("data-delayed-url") || img.currentSrc || "")
+      .filter((u) => /^https:\/\/media\.licdn\.com\/.*feedshare/.test(u))
       .filter((u, i, a) => a.indexOf(u) === i)
       .slice(0, 2);
     if (!KEY.test(text) && !images.length) continue;

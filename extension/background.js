@@ -129,6 +129,13 @@ async function runHunter(trigger) {
       }
       try {
         const res = await run(worker.tabId, scrapeList, [task.portal, task.link_pattern || ""]);
+        // Some portals redirect to sign-in only after the page's own script runs.
+        if (res && res.url && isLoginWall(task.portal, res.url, task.login_pattern)) {
+          blocked.add(task.portal);
+          stats.login_needed.push(task.portal);
+          await log(`${task.portal}: please sign in to it in Chrome — skipped for now.`);
+          continue;
+        }
         const found = (res && res.jobs) || [];
         cards.push(...found);
         stats.searches++;
@@ -168,6 +175,11 @@ async function runHunter(trigger) {
           continue;
         }
         const d = await run(worker.tabId, scrapeDetail, [job.portal]);
+        if (d && d.problem === "bot_check") {
+          // Don't keep poking a portal that wants a human check; the user can clear it once in Chrome.
+          blocked.add(job.portal);
+          await log(`${job.portal} asked to confirm you're a person. Open it once in Chrome and tick the box; skipped for this run.`);
+        }
         await api("/api/ext/detail", { method: "POST", body: { id: job.id, ...(d || {}) } });
         if (d && d.description) stats.read++;
       } catch (e) {
@@ -200,8 +212,18 @@ async function runHunter(trigger) {
 
     // 4) Tailor, one job per request, paced for the AI free tier
     const deadline = Date.now() + 45 * 60_000;
+    let tailorFails = 0;
     while (Date.now() < deadline && !(await get("stop"))) {
-      const r = await api("/api/ext/tailor-next", { method: "POST" });
+      let r;
+      try {
+        r = await api("/api/ext/tailor-next", { method: "POST" });
+        tailorFails = 0;
+      } catch (e) {
+        // One slow step shouldn't end the run: the server puts the job back in the queue.
+        if (++tailorFails >= 3) { await log(`Tailor stopped: ${e.message}`); break; }
+        await sleep(5000);
+        continue;
+      }
       if (r.done) break;
       if (r.rate_limited) {
         await setProgress({ phase: "Tailor", detail: "AI limit reached — waiting a minute", badge: r.remaining });
@@ -279,6 +301,7 @@ const LOGIN_CHECKS = {
  * `extra` = [{ id, home, login_pattern }] sent by the Apply.ai page for the user's selected portals.
  */
 async function checkLogins(extra = []) {
+  await requirePaired();
   const worker = await openWorker();
   const status = {};
   try {
@@ -321,7 +344,14 @@ async function shrinkImage(url) {
   return { mime: "image/jpeg", data: btoa(bin) };
 }
 
+const NOT_PAIRED =
+  "The extension isn't connected to your Apply.ai account. Reload the Apply.ai page (it reconnects automatically) or click Connect extension in Settings.";
+async function requirePaired() {
+  if (!(await get("token"))) throw new Error(NOT_PAIRED);
+}
+
 async function scanLinkedIn() {
+  await requirePaired(); // check first, so nobody waits for a scan whose results can't be saved
   if (await get("running")) throw new Error("Hunter is running. Try the scan when it finishes.");
   if (await get("scanning")) throw new Error("A LinkedIn scan is already running.");
   const progress = (text) => set({ scanProgress: { text, at: Date.now() } });
@@ -410,6 +440,29 @@ async function scanLinkedIn() {
   }
 }
 
+/** Read ONE LinkedIn post the user pastes (for posts LinkedIn doesn't list in their activity). */
+async function readLinkedInPost(url) {
+  if (!/^https:\/\/www\.linkedin\.com\/(posts|feed\/update)\//.test(url || "")) throw new Error("Paste a link to a LinkedIn post (it starts with linkedin.com/posts/ or linkedin.com/feed/update/).");
+  const worker = await openWorker();
+  try {
+    const loaded = waitForLoad(worker.tabId, 15000);
+    await chrome.tabs.update(worker.tabId, { url });
+    await loaded;
+    const r = await run(worker.tabId, scrapeLinkedInPosts, []).catch(() => null);
+    const post = r && r.posts && r.posts[0];
+    if (!post) throw new Error("Couldn't read that post. Check you're signed in to LinkedIn and the link opens your post.");
+    const images = [];
+    for (const u of post.images) {
+      const img = await shrinkImage(u).catch(() => null);
+      if (img) images.push(img);
+    }
+    const res = await api("/api/ext/linkedin-scan", { method: "POST", body: { sections: [], posts: [{ ...post, url: post.url || url, images }] } });
+    return { found: res.found, read: 1 };
+  } finally {
+    await closeWorker(worker);
+  }
+}
+
 /* ──────────────────── Interview research (Coach) ──────────────────── */
 
 const LEGAL = new Set(["pvt", "private", "ltd", "limited", "inc", "llp", "llc", "corp", "corporation", "co"]);
@@ -421,6 +474,7 @@ const slugify = (t) => {
 
 /** Read interview reviews for a company/role on Glassdoor and AmbitionBox in the user's own Chrome. */
 async function researchInterviews(sessionId, company, role) {
+  await requirePaired();
   if (!sessionId || !company) throw new Error("Missing company for research.");
   if (await get("running")) throw new Error("Hunter is running. Try again when it finishes.");
   const worker = await openWorker();
@@ -469,6 +523,7 @@ const ROLE_STOP = /\b(senior|sr|junior|jr|lead|principal|staff|associate|manager
 
 /** Find people at the company on LinkedIn for one job, then let Networker draft referral asks. */
 async function findPeople(jobId, company, role, workerIn) {
+  await requirePaired();
   if (!jobId || !company) throw new Error("Missing job details.");
   const worker = workerIn || (await openWorker());
   try {
@@ -530,6 +585,8 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           return checkLogins(msg.portals);
         case "SCAN_LINKEDIN":
           return scanLinkedIn();
+        case "READ_POST":
+          return readLinkedInPost(String(msg.url || "").trim());
         case "SCAN_PROGRESS":
           return (await get("scanProgress")) || null;
         case "FIND_PEOPLE":

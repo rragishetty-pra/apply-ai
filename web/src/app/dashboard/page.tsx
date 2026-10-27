@@ -75,7 +75,7 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, [session, load]);
 
-  const pending = jobs.filter((j) => j.status === "pending").length;
+  const pending = jobs.filter((j) => ["pending", "scoring", "to_tailor", "tailoring"].includes(j.status)).length;
   const unpacked = jobs.filter((j) => j.status === "tailored" && !j.applied && !j.apply_pack).length;
   const toAsk = contacts.filter((c) => c.status === "suggested").length;
 
@@ -127,23 +127,40 @@ export default function Dashboard() {
     stopRef.current = false;
     setTailoring("Starting…");
     let n = 0;
-    try {
-      while (!stopRef.current) {
-        const r = await api<{ done: boolean; remaining: number; rate_limited?: boolean; job?: { title: string; status: string; match_percent: number } }>("/api/tailor/next", { method: "POST" });
-        if (r.done) break;
-        if (r.rate_limited) {
-          setTailoring(`AI limit reached — waiting a minute (${r.remaining} left)…`);
-          await new Promise((res) => setTimeout(res, 60_000));
-          continue;
+    let fails = 0;
+    while (!stopRef.current) {
+      let r: { done: boolean; remaining: number; rate_limited?: boolean; job?: { title: string; status: string; match_percent: number | null } };
+      try {
+        r = await api("/api/tailor/next", { method: "POST" });
+        fails = 0;
+      } catch (e) {
+        // A slow or failed step shouldn't end the whole run: the server re-queues the job.
+        if (++fails >= 3) {
+          setTailoring((e as Error).message);
+          await new Promise((res) => setTimeout(res, 4000));
+          break;
         }
-        n++;
-        setTailoring(`Done ${n} · ${r.remaining} left${r.job ? ` · last: ${r.job.title} (${r.job.match_percent ?? "–"}%)` : ""}`);
-        await load();
-        await new Promise((res) => setTimeout(res, 5000)); // stay under free-tier per-minute limits
+        setTailoring(`That step didn't finish (${(e as Error).message}). Trying the next one…`);
+        await new Promise((res) => setTimeout(res, 5000));
+        continue;
       }
-    } catch (e) {
-      setTailoring((e as Error).message);
-      await new Promise((res) => setTimeout(res, 4000));
+      if (r.done) break;
+      if (r.rate_limited) {
+        setTailoring(`AI limit reached — waiting a minute (${r.remaining} left)…`);
+        await new Promise((res) => setTimeout(res, 60_000));
+        continue;
+      }
+      n++;
+      const last = !r.job
+        ? ""
+        : r.job.status === "to_tailor"
+        ? ` · ${r.job.title} looks like a match (${r.job.match_percent}%), tailoring next`
+        : r.job.status === "retry_later"
+        ? ` · ${r.job.title} was slow, will retry later`
+        : ` · last: ${r.job.title} (${r.job.match_percent ?? "–"}%)`;
+      setTailoring(`Step ${n} · ${r.remaining} left${last}`);
+      await load();
+      await new Promise((res) => setTimeout(res, 5000)); // stay under free-tier per-minute limits
     }
     setTailoring(null);
     load();

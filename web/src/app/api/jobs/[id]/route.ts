@@ -45,7 +45,7 @@ export const PATCH = handle(async (req: Request, ctx: Ctx) => {
   if (body.retailor === true) {
     // Jobs skipped before their page was read go back to Hunter's reading queue first.
     const { data: cur } = await supabaseAdmin().from("jobs").select("description").eq("id", id).eq("user_id", user.id).maybeSingle();
-    Object.assign(update, { status: cur?.description ? "pending" : "found", error: null, stage: null });
+    Object.assign(update, { status: cur?.description ? "pending" : "found", error: null, stage: null, tailor_attempts: 0 });
   }
 
   const { data, error } = await supabaseAdmin()

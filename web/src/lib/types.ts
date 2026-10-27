@@ -65,7 +65,9 @@ export interface Profile {
 export type JobStatus =
   | "found"      // listed by Hunter, description not fetched yet
   | "pending"    // description fetched, waiting for Tailor
-  | "scoring"    // Tailor is working on it
+  | "scoring"    // Tailor is quick-scoring it
+  | "to_tailor"  // scored as a likely match, full tailoring next
+  | "tailoring"  // Tailor is writing the tailored CV
   | "tailored"   // match ≥ threshold, tailored CV ready
   | "stretch"    // close but not enough; gaps recorded
   | "skipped"    // not relevant / excluded

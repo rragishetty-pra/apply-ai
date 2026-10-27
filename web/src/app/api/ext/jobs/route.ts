@@ -15,6 +15,7 @@ interface Listed {
   location?: string;
   posted_text?: string;
   snippet?: string;
+  description?: string;   // some readers (e.g. Indeed) read it straight from the results page
 }
 
 const s = (v: unknown, n = 300) => (typeof v === "string" ? v.trim().slice(0, n) : "");
@@ -39,6 +40,7 @@ export const POST = handle(async (req) => {
       location: s(j.location),
       posted_text: s(j.posted_text, 80),
       snippet: s(j.snippet, 600),
+      description: s(j.description, 20000),
     }))
     .filter((j: Listed) => j.external_id && j.url && j.title)
     .slice(0, 400);
@@ -79,10 +81,13 @@ export const POST = handle(async (req) => {
     const k = candidates.indexOf(j);
     const isExcluded = excluded(j.company);
     const keep = !isExcluded && relevant.has(k);
+    const { description, ...card } = j;
+    const hasDesc = keep && (description || "").length >= 200;
     return {
       user_id: user.id,
-      ...j,
-      status: keep ? "found" : "skipped",
+      ...card,
+      description: hasDesc ? description : null,
+      status: keep ? (hasDesc ? "pending" : "found") : "skipped",
       verdict: keep ? null : "skip",
       analysis: keep
         ? null

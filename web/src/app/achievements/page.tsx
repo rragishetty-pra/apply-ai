@@ -25,6 +25,7 @@ export default function Achievements() {
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [postUrl, setPostUrl] = useState("");
 
   const load = useCallback(async () => {
     const { achievements } = await api<{ achievements: Achievement[] }>("/api/achievements");
@@ -68,7 +69,7 @@ export default function Achievements() {
         r.found
           ? `Found ${r.found} new item${r.found > 1 ? "s" : ""} on LinkedIn. Check them below and keep the ones that are right.`
           : r.read
-          ? "Nothing new found on LinkedIn. Everything there is already in your list."
+          ? "Nothing new on LinkedIn: everything it found is already listed on the right. If a post is missing, paste its link below."
           : "We couldn't find certifications, honours or recommendations on your LinkedIn profile. If you can see them there, tell us, as LinkedIn may have changed its pages."
       );
       await load();
@@ -76,6 +77,22 @@ export default function Achievements() {
       setMsg((e as Error).message);
     } finally {
       clearInterval(tick);
+      setBusy(null);
+    }
+  }
+
+  async function readPost(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy("post");
+    setMsg("Reading that post and its certificate image…");
+    try {
+      const r = await ask<{ found: number }>("READ_POST", { url: postUrl.trim() }, 120_000);
+      setMsg(r.found ? "Got it. Check the new item on the right and keep it if it's right." : "Read the post, but didn't find an achievement in it (or it's already in your list).");
+      setPostUrl("");
+      await load();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
       setBusy(null);
     }
   }
@@ -182,6 +199,24 @@ export default function Achievements() {
               </button>
             ) : (
               <a className="btn-ghost w-full" href="/settings">Connect the Chrome extension first</a>
+            )}
+            {extension && (
+              <form onSubmit={readPost} className="mt-5 pt-5 border-t border-line space-y-2">
+                <label className="label" htmlFor="post-url">Missing one? Paste the post link</label>
+                <p className="text-xs text-muted">
+                  LinkedIn doesn&apos;t list every older post in your activity. Open the post, click ⋯ → Copy link to post, and paste it here.
+                </p>
+                <input
+                  id="post-url"
+                  className="input"
+                  placeholder="https://www.linkedin.com/posts/…"
+                  value={postUrl}
+                  onChange={(e) => setPostUrl(e.target.value)}
+                />
+                <button className="btn-ghost w-full" disabled={busy === "post" || !/linkedin\.com\/(posts|feed\/update)\//.test(postUrl)}>
+                  {busy === "post" ? "Reading post…" : "Read this post"}
+                </button>
+              </form>
             )}
           </div>
           {msg && <p className="text-sm text-muted px-1">{msg}</p>}

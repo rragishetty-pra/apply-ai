@@ -72,7 +72,7 @@ export async function parseLinkedIn(sections: Section[], existing: Pick<Achievem
   // Reading certificate images needs the main model; text-only can use the cheaper one.
   const out = await askJSON<{ achievements: Record<string, unknown>[] }>(parts, {
     temperature: 0.1,
-    tier: images ? "main" : "lite",
+    tier: images || posts.length ? "main" : "lite", // posts need judgement; the main model reads them more reliably
     maxTokens: 4096,
   });
 
