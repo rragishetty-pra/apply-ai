@@ -42,6 +42,6 @@ export const GET = handle(async (req) => {
     }
   };
 
-  const results = await Promise.all([...models.map((m) => probe(m, false)), probe(process.env.GEMINI_MODEL || FALLBACK_MODELS[0], true)]);
+  const results = await Promise.all([...models.map((m) => probe(m, false)), ...FALLBACK_MODELS.map((m) => probe(m, true))]);
   return json({ configured: { GEMINI_MODEL: process.env.GEMINI_MODEL || null, GEMINI_LITE_MODEL: process.env.GEMINI_LITE_MODEL || null }, results });
 });

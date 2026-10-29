@@ -49,7 +49,8 @@ function limitError(kind: "daily" | "minute" | "none" | null): AIServiceError {
     : new AIServiceError(429, `Google's free per-minute AI limit was reached. Waiting a minute, then carrying on. [${lastQuotaDetail}]`);
 }
 
-export const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+// 3.5-flash first: on our key 3.8-flash sometimes doesn't answer at all (seen 29 Oct 2026).
+export const FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-2.5-flash"];
 // Cheaper, faster model for first-pass scoring. Falls back to the main model if none is available.
 export const LITE_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"];
 let workingModel: string | null = null;
@@ -71,6 +72,14 @@ async function timedFetch(url: string, init: RequestInit, ms = 50_000): Promise<
   }
 }
 
+/** Models that recently didn't answer in time are tried last for 10 minutes. */
+const slowUntil = new Map<string, number>();
+const SLOW_MS = 10 * 60_000;
+function bySpeed(models: string[]): string[] {
+  const now = Date.now();
+  return [...models.filter((m) => (slowUntil.get(m) || 0) < now), ...models.filter((m) => (slowUntil.get(m) || 0) >= now)];
+}
+
 /** A text or image part for multimodal requests. */
 export type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
@@ -90,9 +99,15 @@ export async function askJSON<T>(
   let busy = false;
   let limited: "daily" | "minute" | "none" | null = null;
 
-  for (const model of candidates) {
+  const deadline = Date.now() + (opts.timeoutMs ?? 50_000);
+  let timedOut = false;
+  for (const model of bySpeed(candidates)) {
+    const left = deadline - Date.now();
+    if (left < 5_000) break;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const res = await timedFetch(url, {
+    let res: Response;
+    try {
+      res = await timedFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
@@ -103,7 +118,19 @@ export async function askJSON<T>(
           responseMimeType: "application/json",
         },
       }),
-    });
+    }, left);
+    } catch (e) {
+      if (e instanceof AIServiceError && e.status === 504) {
+        // No answer in time: remember, and let the next model try with the time that's left.
+        slowUntil.set(model, Date.now() + SLOW_MS);
+        if (workingModel === model) workingModel = null;
+        if (workingLite === model) workingLite = null;
+        timedOut = true;
+        lastError = `model ${model} didn't answer in time`;
+        continue;
+      }
+      throw e;
+    }
 
     if (res.status === 404) {
       // Model retired or unknown → try the next one
@@ -140,6 +167,7 @@ export async function askJSON<T>(
   }
 
   if (limited) throw limitError(limited);
+  if (timedOut) throw new AIServiceError(504, "The AI took too long to answer. It will be retried on the next pass.");
   if (busy) throw new AIServiceError(503, "Google's AI is very busy right now. Waiting a minute, then carrying on.");
   throw new AIServiceError(
     503,
@@ -165,9 +193,14 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
   const candidates = [...new Set([workingModel, process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean) as string[])];
   let gLimited: "daily" | "minute" | "none" | null = null;
 
-  for (const model of candidates) {
+  const gDeadline = Date.now() + 50_000;
+  for (const model of bySpeed(candidates)) {
+    const left = gDeadline - Date.now();
+    if (left < 5_000) break;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const res = await timedFetch(url, {
+    let res: Response;
+    try {
+      res = await timedFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
@@ -175,7 +208,15 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
         tools: [{ google_search: {} }],
         generationConfig: { temperature: opts.temperature ?? 0.4, maxOutputTokens: 8192 },
       }),
-    });
+    }, left);
+    } catch (e) {
+      if (e instanceof AIServiceError && e.status === 504) {
+        slowUntil.set(model, Date.now() + SLOW_MS);
+        if (workingModel === model) workingModel = null;
+        continue;
+      }
+      throw e;
+    }
     if (res.status === 404) {
       if (workingModel === model) workingModel = null;
       continue;
