@@ -257,12 +257,12 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
       grounded: sources.length > 0,
     };
   }
-  if (gLimited === "none") {
-    // Google Search grounding isn't in this key's free plan: answer without search, and say so.
+  if (gLimited) {
+    // Google Search refused (on our free key its search quota is used up or zero, while plain answers
+    // still work): answer without search, and say so via grounded: false.
     const data = await askJSON<T>(prompt, opts);
     return { data, sources: [], searchHtml: null, grounded: false };
   }
-  if (gLimited) throw limitError(gLimited);
   throw new AIServiceError(503, "No AI model is available. Set GEMINI_MODEL in Vercel to a current model, e.g. gemini-3.8-flash.");
 }
 

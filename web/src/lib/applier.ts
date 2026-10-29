@@ -78,7 +78,12 @@ Return ONLY JSON: {"referral_culture": "strong" | "some" | "weak" | "unknown", "
     reason: String(out.data.reason || "").slice(0, 400),
     notes: (Array.isArray(out.data.notes) ? out.data.notes : []).map((x) => String(x).slice(0, 200)).slice(0, 3),
   };
-  await db.from("company_research").upsert({ company_key: key, company, data, sources: out.sources.slice(0, 10), researched_at: new Date().toISOString() });
+  if (!out.grounded) {
+    // Google Search wasn't available: this is the AI's general knowledge, so say so and re-check in a week.
+    data.notes = ["Not checked with Google Search (general knowledge only)", ...data.notes].slice(0, 3);
+  }
+  const researched_at = new Date(Date.now() - (out.grounded ? 0 : (RESEARCH_TTL_DAYS - 7) * 86400_000)).toISOString();
+  await db.from("company_research").upsert({ company_key: key, company, data, sources: out.sources.slice(0, 10), researched_at });
   return { data, sources: out.sources };
 }
 
