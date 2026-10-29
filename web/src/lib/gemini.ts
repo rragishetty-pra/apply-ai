@@ -26,16 +26,27 @@ export function quotaResetIST(): string {
   return reset.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" });
 }
 
-/** Each Gemini model has its own free quota; remember which kind of limit we hit. */
-async function limitKind(res: Response): Promise<"daily" | "minute"> {
+/**
+ * Each Gemini model has its own free quota; work out which kind of limit we hit from Google's reply.
+ * "none" = this feature/model has a limit of 0 on this key (not part of the free tier at all).
+ */
+let lastQuotaDetail = "";
+async function limitKind(res: Response): Promise<"daily" | "minute" | "none"> {
   const body = await res.text().catch(() => "");
-  return /per.?day|PerDay|daily/i.test(body) ? "daily" : "minute";
+  const ids = [...body.matchAll(/"quotaId"\s*:\s*"([^"]+)"/g)].map((m) => m[1]);
+  const vals = [...body.matchAll(/"quotaValue"\s*:\s*"?(\d+)/g)].map((m) => Number(m[1]));
+  lastQuotaDetail = (ids.join(", ") + (vals.length ? ` (limit ${vals.join(", ")})` : "")).slice(0, 200) || body.slice(0, 200);
+  if (vals.length && vals.every((v) => v === 0)) return "none";
+  if (/limit:\s*0\b/.test(body)) return "none";
+  return /per.?day|PerDay|daily/i.test(body + ids.join(" ")) ? "daily" : "minute";
 }
 
-function limitError(kind: "daily" | "minute" | null): AIServiceError {
+function limitError(kind: "daily" | "minute" | "none" | null): AIServiceError {
+  if (kind === "none")
+    return new AIServiceError(403, `This AI feature isn't included in Google's free plan for this key (${lastQuotaDetail}).`);
   return kind === "daily"
     ? new AIServiceError(429, `Google's free daily AI limit is used up. It resets at ${quotaResetIST()} (India time); Apply.ai carries on then.`, true)
-    : new AIServiceError(429, "Google's free per-minute AI limit was reached. Waiting a minute, then carrying on.");
+    : new AIServiceError(429, `Google's free per-minute AI limit was reached. Waiting a minute, then carrying on. [${lastQuotaDetail}]`);
 }
 
 const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
@@ -77,7 +88,7 @@ export async function askJSON<T>(
   ];
   let lastError = "";
   let busy = false;
-  let limited: "daily" | "minute" | null = null;
+  let limited: "daily" | "minute" | "none" | null = null;
 
   for (const model of candidates) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -104,7 +115,8 @@ export async function askJSON<T>(
     if (res.status === 429) {
       // This model's free quota is used up: the next model has its own quota.
       const kind = await limitKind(res);
-      if (limited !== "minute") limited = kind;
+      // Report the most hopeful reason: a per-minute limit clears soonest; "none" only if nothing else.
+      if (kind === "minute" || !limited || limited === "none") limited = kind === "none" && limited ? limited : kind;
       lastError = `model ${model} hit its ${kind} limit`;
       continue;
     }
@@ -151,7 +163,7 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AIServiceError(500, "GEMINI_API_KEY is not set on the server.");
   const candidates = [...new Set([workingModel, process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean) as string[])];
-  let gLimited: "daily" | "minute" | null = null;
+  let gLimited: "daily" | "minute" | "none" | null = null;
 
   for (const model of candidates) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
@@ -170,7 +182,7 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
     }
     if (res.status === 429) {
       const kind = await limitKind(res);
-      if (gLimited !== "minute") gLimited = kind;
+      if (kind === "minute" || !gLimited || gLimited === "none") gLimited = kind === "none" && gLimited ? gLimited : kind;
       continue;
     }
     if (res.status === 503 || res.status === 500) continue; // overloaded: try the next model
@@ -203,6 +215,11 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
       searchHtml: meta.searchEntryPoint?.renderedContent || null,
       grounded: sources.length > 0,
     };
+  }
+  if (gLimited === "none") {
+    // Google Search grounding isn't in this key's free plan: answer without search, and say so.
+    const data = await askJSON<T>(prompt, opts);
+    return { data, sources: [], searchHtml: null, grounded: false };
   }
   if (gLimited) throw limitError(gLimited);
   throw new AIServiceError(503, "No AI model is available. Set GEMINI_MODEL in Vercel to a current model, e.g. gemini-3.8-flash.");
