@@ -49,9 +49,9 @@ function limitError(kind: "daily" | "minute" | "none" | null): AIServiceError {
     : new AIServiceError(429, `Google's free per-minute AI limit was reached. Waiting a minute, then carrying on. [${lastQuotaDetail}]`);
 }
 
-const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+export const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
 // Cheaper, faster model for first-pass scoring. Falls back to the main model if none is available.
-const LITE_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"];
+export const LITE_MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite"];
 let workingModel: string | null = null;
 let workingLite: string | null = null;
 
