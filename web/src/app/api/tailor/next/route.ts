@@ -1,7 +1,7 @@
 import { handle, json, requireUser } from "@/lib/auth";
 import { tailorNext } from "@/lib/tailor-run";
 
-export const maxDuration = 60;
+export const maxDuration = 120; // full tailoring step (Fluid compute)
 
 /** Dashboard "Run Tailor": processes one queued job per call; the page loops until done. */
 export const POST = handle(async (req) => {

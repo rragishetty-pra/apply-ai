@@ -123,7 +123,7 @@ CV:
 """
 ${cvBlock.slice(0, 20000)}
 """`,
-    { temperature: 0.3 }
+    { temperature: 0.3, timeoutMs: 100_000 } // full tailoring is the slowest call; its routes allow 120s
   );
 }
 

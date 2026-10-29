@@ -162,7 +162,7 @@ CV:
 """
 ${(profile.cv_text || "").slice(0, 12000)}
 """`,
-    { temperature: 0.4 }
+    { temperature: 0.4, timeoutMs: 150_000 } // writing a pack is slow; its routes allow 180s
   );
 
 
