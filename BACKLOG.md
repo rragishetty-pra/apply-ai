@@ -18,6 +18,8 @@ Items are roughly in priority order within each section. Move an item to "Done" 
 - **Decision:** switch only if decisions agree, no needs-you items are missed, and cover notes are comparable.
 
 ## Next up
+- Vercel setting GEMINI_MODEL is "gemini-2.5-flash", which Google has retired (harmless, falls through in 0.2s): change it to gemini-3.5-flash.
+- Google Search grounding is refused on our free Gemini key ("exceeded your current quota"). Company research and Coach answer from general knowledge until search is enabled (billing) — decide if that's worth it.
 - Clean-up: old Indeed rows titled "Additional Verification Required" / "We can't find this page" came from decoy links.
 - Hirist: read the company name from the job page (the results card shows a category instead).
 - Tune the "Trial" portals (Shine, Instahyre, Cutshort, Glassdoor, Wellfound, iimjobs) after the first live runs.
@@ -33,6 +35,7 @@ Items are roughly in priority order within each section. Move an item to "Done" 
 - Mock-interview scoring history in Coach.
 
 ## Done
+- 2026-10-29 — Applier fixed end to end: company research and the pack run as separate steps; packs get up to 180s and full tailoring 120s; a failing job is set aside with its reason instead of blocking the queue; per-job buttons show progress and real reasons. Gemini: models that don't answer are skipped for 10 minutes, 3.5-flash tried first, Google Search refusals fall back to plain answers, daily vs per-minute limits told apart. New /api/ai-health check.
 - 2026-10-26 — Live run fixes: Tailor split into two short steps with a 3-try limit (one slow job no longer blocks the queue); Indeed decoy links skipped and descriptions read from the results pane (no bot checks); LinkedIn's new job search and job pages; Hirist's real search address; bot-check and expired pages no longer overwrite job titles.
 - 2026-10-23 — Hunter: foundit reader (its cards have no links) with a 30-day window; Instahyre via its public search (no sign-in); searches look back to the last run (30 days on the first) instead of a fixed 24 hours; late sign-in redirects detected.
 - 2026-10-22 — LinkedIn scan: certificate images found even before they load, exact post dates, 'paste a post link' for posts LinkedIn hides from activity.
