@@ -32,17 +32,21 @@ export default function Onboarding() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false); // avoid flashing the form before we know they're new
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!session) return;
-    api<{ profile: { prefs: Prefs; cv_filename: string | null; cv_format: string | null; portal_status: Record<string, string> } }>("/api/profile").then(({ profile }) => {
+    api<{ profile: { prefs: Prefs; cv_filename: string | null; cv_format: string | null; portal_status: Record<string, string>; onboarded: boolean } }>("/api/profile").then(({ profile }) => {
+      // Already set up (e.g. coming back after reinstalling the extension): never ask for details twice.
+      if (profile.onboarded) return router.replace("/dashboard");
+      setLoaded(true);
       const merged = mergePrefs(profile.prefs);
       setPrefs({ ...merged, target_roles: withRole(merged.target_roles, readPendingRole()) });
       setPortalStatus(profile.portal_status || {});
       if (profile.cv_filename) setCv({ filename: profile.cv_filename, format: profile.cv_format || "" });
-    });
-  }, [session]);
+    }).catch(() => setLoaded(true));
+  }, [session, router]);
 
   async function upload(file: File) {
     setErr(null);
@@ -92,7 +96,7 @@ export default function Onboarding() {
     }
   }
 
-  if (!session) return null;
+  if (!session || !loaded) return null;
 
   return (
     <div className="min-h-screen">

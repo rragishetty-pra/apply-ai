@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Shell";
 import { JobTicker, TopSearches } from "@/components/Trending";
 import { getTodayStats } from "@/lib/stats";
+import HomeAuthLink from "@/components/HomeAuthLink";
 
 export const revalidate = 300; // landing stats refresh every 5 minutes
 
@@ -21,7 +22,7 @@ export default async function Home() {
     <div className="min-h-screen">
       <header className="mx-auto max-w-6xl px-5 h-20 flex items-center justify-between">
         <Logo />
-        <Link href="/login" className="btn-ghost">Sign in</Link>
+        <HomeAuthLink />
       </header>
 
       {/* Hero */}

@@ -673,9 +673,14 @@ chrome.alarms.onAlarm.addListener(async (a) => {
   if (!ranToday && h >= hour && h < hour + 5) runHunter("schedule").catch(() => {});
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   set({ running: false, scanning: false });
   scheduleDaily();
+  // New install (or re-added from a folder): show the home page to sign in or sign up.
+  if (details.reason === "install") {
+    const { token } = await chrome.storage.local.get("token");
+    if (!token) chrome.tabs.create({ url: API() + "/" });
+  }
 });
 chrome.runtime.onStartup.addListener(() => {
   set({ running: false, scanning: false });

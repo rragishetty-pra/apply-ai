@@ -9,6 +9,18 @@ const send = (type) =>
   );
 const openApp = (path = "/dashboard") => chrome.tabs.create({ url: self.APP_URL + path });
 
+/** Not connected (new install, reloaded extension, new computer): send people to the home page,
+ *  where they sign in or sign up. Reuse an Apply.ai tab if one is already open. */
+async function openHome() {
+  const tabs = await chrome.tabs.query({ url: self.APP_URL + "/*" });
+  if (tabs.length) {
+    await chrome.tabs.update(tabs[0].id, { active: true });
+    await chrome.windows.update(tabs[0].windowId, { focused: true });
+  } else {
+    await chrome.tabs.create({ url: self.APP_URL + "/" });
+  }
+}
+
 async function render() {
   const s = await chrome.storage.local.get(["token", "running", "progress", "log", "lastRun"]);
   $("notPaired").hidden = !!s.token;
@@ -31,7 +43,7 @@ async function render() {
   $("log").textContent = (s.log || []).slice(-15).join("\n");
 }
 
-$("openApp1").onclick = () => openApp("/onboarding");
+$("openApp1").onclick = () => openHome();
 $("openApp2").onclick = () => openApp();
 $("run").onclick = async () => { $("err").textContent = ""; try { await send("RUN_HUNTER"); } catch (e) { $("err").textContent = e.message; } };
 $("stop").onclick = () => send("STOP");
@@ -57,3 +69,8 @@ $("capture").onclick = async () => {
 
 chrome.storage.onChanged.addListener(render);
 render();
+
+// Clicking the extension while it isn't connected goes straight to the home page.
+chrome.storage.local.get("token").then((s) => {
+  if (!s.token) openHome().then(() => window.close()).catch(() => {});
+});
