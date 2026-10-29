@@ -12,6 +12,8 @@ export interface TailorStep {
   remaining: number;
   job?: { id: string; title: string | null; company: string | null; status: string; match_percent: number | null };
   rate_limited?: boolean;
+  daily_limit?: boolean;
+  message?: string;
 }
 
 const MAX_ATTEMPTS = 3;
@@ -164,7 +166,7 @@ export async function tailorNext(userId: string): Promise<TailorStep> {
         .from("jobs")
         .update({ status: next.status, ...(notJob ? { tailor_attempts: next.tailor_attempts || 0 } : {}) })
         .eq("id", next.id);
-      if (notJob) return { done: false, remaining: await countPending(userId), rate_limited: true };
+      if (notJob) return { done: false, remaining: await countPending(userId), rate_limited: true, daily_limit: e.daily, message: e.message };
       if (e.status === 504) {
         // Too slow this time: carry on with the next job instead of stopping the run.
         return {

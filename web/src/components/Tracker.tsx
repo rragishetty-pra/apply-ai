@@ -6,6 +6,7 @@ import { api } from "@/lib/supabase-browser";
 import { portalName } from "@/lib/portal-list";
 import { GROUPS, STEPS, jobStage, type Group, type Stage } from "@/lib/job-stage";
 import ApplyPackPanel from "@/components/ApplyPackPanel";
+import { prepareApplyPack } from "@/lib/apply-pack-client";
 import type { Contact, Job } from "@/lib/types";
 
 const TONE: Record<Stage["tone"], string> = {
@@ -219,6 +220,7 @@ function Row({
 }) {
   const [confirmApplied, setConfirmApplied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const [notes, setNotes] = useState(job.notes || "");
   const [when, setWhen] = useState(job.interview_at || "");
 
@@ -239,9 +241,13 @@ function Row({
       if (k === "apply") setConfirmApplied(true);
     } else if (k === "prepare") {
       setBusy(true);
+      setNote("Checking how this company hires…");
       try {
-        await api("/api/applier/next", { method: "POST", body: JSON.stringify({ job_id: job.id }) });
+        const problem = await prepareApplyPack(job.id, setNote);
+        setNote(problem);
         onReload();
+      } catch (e) {
+        setNote((e as Error).message);
       } finally {
         setBusy(false);
       }
@@ -289,6 +295,7 @@ function Row({
         <div className="min-w-0">
           <span className={`chip px-3 py-1 text-sm ${TONE[stage.tone]}`}>{stage.label}</span>
           {stage.detail && <p className="text-sm text-muted mt-1.5 leading-snug">{stage.detail}</p>}
+          {note && <p className="text-sm mt-1.5 leading-snug" role="status">{note}</p>}
           <Progress step={stage.step} />
         </div>
 

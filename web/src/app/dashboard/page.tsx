@@ -76,30 +76,57 @@ export default function Dashboard() {
   }, [session, load]);
 
   const pending = jobs.filter((j) => ["pending", "scoring", "to_tailor", "tailoring"].includes(j.status)).length;
-  const unpacked = jobs.filter((j) => j.status === "tailored" && !j.applied && !j.apply_pack).length;
+  const unpacked = jobs.filter((j) => j.status === "tailored" && !j.applied && !j.apply_pack && !j.error).length;
   const toAsk = contacts.filter((c) => c.status === "suggested").length;
 
   async function runApplier() {
     stopRef.current = false;
     setApplying("Starting…");
-    let n = 0;
-    try {
-      while (!stopRef.current) {
-        const r = await api<{ done: boolean; remaining: number; rate_limited?: boolean; job?: { title: string; route: string } }>("/api/applier/next", { method: "POST", body: "{}" });
-        if (r.done) break;
-        if (r.rate_limited) {
-          setApplying(`AI limit reached, waiting a minute (${r.remaining} left)…`);
-          await new Promise((res) => setTimeout(res, 60_000));
-          continue;
+    let ready = 0;
+    let failed = 0;
+    let errors = 0;
+    while (!stopRef.current) {
+      let r: { done: boolean; remaining: number; step?: string; rate_limited?: boolean; daily_limit?: boolean; message?: string; job?: { title: string | null; company: string | null; route?: string } };
+      try {
+        r = await api("/api/applier/next", { method: "POST", body: "{}" });
+        errors = 0;
+      } catch (e) {
+        if (++errors >= 3) {
+          setApplying((e as Error).message);
+          await new Promise((res) => setTimeout(res, 6000));
+          break;
         }
-        n++;
-        setApplying(`${n} ready, ${r.remaining} left${r.job ? `. Last: ${r.job.title} (${r.job.route === "referral_first" ? "referral first" : "apply directly"})` : ""}`);
-        await load();
+        setApplying(`That step didn't finish (${(e as Error).message}). Trying again…`);
         await new Promise((res) => setTimeout(res, 5000));
+        continue;
       }
-    } catch (e) {
-      setApplying((e as Error).message);
+      if (r.done) break;
+      if (r.rate_limited) {
+        if (r.daily_limit) {
+          // Nothing will work until Google's quota resets: say so and stop.
+          setApplying(r.message || "Google's free daily AI limit is used up for today.");
+          await new Promise((res) => setTimeout(res, 12_000));
+          break;
+        }
+        setApplying(`${r.message || "AI busy"} (${r.remaining} left)`);
+        await new Promise((res) => setTimeout(res, 60_000));
+        continue;
+      }
+      if (r.step === "research") setApplying(`Checked how ${r.job?.company || "the company"} hires…`);
+      if (r.step === "failed") {
+        failed++;
+        setApplying(`Skipped ${r.job?.title || "a job"}: ${r.message}`);
+      }
+      if (r.step === "pack") {
+        ready++;
+        setApplying(`${ready} ready, ${r.remaining} left. Last: ${r.job?.title} (${r.job?.route === "referral_first" ? "referral first" : "apply directly"})`);
+        await load();
+      }
       await new Promise((res) => setTimeout(res, 4000));
+    }
+    if (failed) {
+      setApplying(`${ready} apply pack${ready === 1 ? "" : "s"} ready. ${failed} couldn't be prepared; open them below to try again.`);
+      await new Promise((res) => setTimeout(res, 8000));
     }
     setApplying(null);
     load();
@@ -129,7 +156,7 @@ export default function Dashboard() {
     let n = 0;
     let fails = 0;
     while (!stopRef.current) {
-      let r: { done: boolean; remaining: number; rate_limited?: boolean; job?: { title: string; status: string; match_percent: number | null } };
+      let r: { done: boolean; remaining: number; rate_limited?: boolean; daily_limit?: boolean; message?: string; job?: { title: string; status: string; match_percent: number | null } };
       try {
         r = await api("/api/tailor/next", { method: "POST" });
         fails = 0;
@@ -146,7 +173,12 @@ export default function Dashboard() {
       }
       if (r.done) break;
       if (r.rate_limited) {
-        setTailoring(`AI busy or at its limit — waiting a minute (${r.remaining} left)…`);
+        if (r.daily_limit) {
+          setTailoring(r.message || "Google's free daily AI limit is used up for today.");
+          await new Promise((res) => setTimeout(res, 12_000));
+          break;
+        }
+        setTailoring(`${r.message || "AI busy"} (${r.remaining} left)`);
         await new Promise((res) => setTimeout(res, 60_000));
         continue;
       }

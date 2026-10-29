@@ -34,14 +34,34 @@ interface CompanyResearch {
  * How a company hires — researched with web search once, then shared by every user for 30 days.
  * This is the only part of Applier that needs Google Search.
  */
-export async function getCompanyResearch(company: string): Promise<{ data: CompanyResearch; sources: { title: string; url: string }[] } | null> {
+type Research = { data: CompanyResearch; sources: { title: string; url: string }[] };
+
+/** Research already on file for this company (shared by all users), or null. */
+export async function cachedCompanyResearch(company: string): Promise<Research | null> {
   const key = companyKey(company);
   if (!key) return null;
-  const db = supabaseAdmin();
-  const { data: cached } = await db.from("company_research").select("data, sources, researched_at").eq("company_key", key).maybeSingle();
+  const { data: cached } = await supabaseAdmin().from("company_research").select("data, sources, researched_at").eq("company_key", key).maybeSingle();
   if (cached && Date.now() - new Date(cached.researched_at).getTime() < RESEARCH_TTL_DAYS * 86400_000) {
     return { data: cached.data as CompanyResearch, sources: (cached.sources as { title: string; url: string }[]) || [] };
   }
+  return null;
+}
+
+/** When research fails for a reason other than AI limits, note "unknown" for a day so we don't retry every time. */
+async function noteResearchUnknown(company: string) {
+  const key = companyKey(company);
+  if (!key) return;
+  const data: CompanyResearch = { referral_culture: "unknown", referral_programme: false, usual_route: "direct", reason: "", notes: [] };
+  const researched_at = new Date(Date.now() - (RESEARCH_TTL_DAYS - 1) * 86400_000).toISOString();
+  await supabaseAdmin().from("company_research").upsert({ company_key: key, company, data, sources: [], researched_at });
+}
+
+export async function getCompanyResearch(company: string): Promise<Research | null> {
+  const key = companyKey(company);
+  if (!key) return null;
+  const db = supabaseAdmin();
+  const cached = await cachedCompanyResearch(company);
+  if (cached) return cached;
   const out = await askGroundedJSON<CompanyResearch>(
     `Research how ${company} hires in India, using Google Search.
 Does it run an employee referral programme? Do candidates on Glassdoor, AmbitionBox or Reddit say referrals matter
@@ -82,7 +102,8 @@ export async function buildApplyPack(
     .map(([k, v]) => `- ${k}: ${v}`)
     .join("\n");
 
-  const research = job.company ? await getCompanyResearch(job.company).catch(() => null) : null;
+  // Research runs in its own request (see applierNext); here we only read what's on file.
+  const research = job.company ? await cachedCompanyResearch(job.company).catch(() => null) : null;
 
   const pack = await askJSON<Partial<ApplyPack>>(
     `You are "Applier", preparing a job application for a candidate who will submit it themselves.
@@ -149,8 +170,24 @@ ${(profile.cv_text || "").slice(0, 12000)}
   });
 }
 
-/** Prepare ONE apply pack (keeps each request short). */
-export async function applierNext(userId: string, jobId?: string) {
+export interface ApplierStep {
+  done: boolean;
+  remaining: number;
+  step?: "research" | "pack" | "failed";
+  job?: { id: string; title: string | null; company: string | null; route?: string };
+  rate_limited?: boolean;
+  daily_limit?: boolean;
+  message?: string;
+}
+
+/**
+ * Prepare apply packs ONE step at a time, so no request gets near the server's 60s limit:
+ *  1. if the company hasn't been researched yet → research it (Google Search), and stop there;
+ *  2. otherwise → write the pack for the job.
+ * A job whose pack fails is set aside with a message (the per-job button retries it), so one bad
+ * job never blocks the rest.
+ */
+export async function applierNext(userId: string, jobId?: string): Promise<ApplierStep> {
   const db = supabaseAdmin();
   const count = async () => {
     const { count } = await db
@@ -159,26 +196,41 @@ export async function applierNext(userId: string, jobId?: string) {
       .eq("user_id", userId)
       .eq("status", "tailored")
       .eq("applied", false)
-      .is("apply_pack", null);
+      .is("apply_pack", null)
+      .is("error", null);
     return count || 0;
   };
+
+  if (jobId) await db.from("jobs").update({ error: null }).eq("id", jobId).eq("user_id", userId).eq("status", "tailored");
 
   let q = db
     .from("jobs")
     .select("id, title, company, location, url, description, match_percent")
     .eq("user_id", userId)
     .eq("status", "tailored");
-  q = jobId ? q.eq("id", jobId) : q.eq("applied", false).is("apply_pack", null);
+  q = jobId ? q.eq("id", jobId) : q.eq("applied", false).is("apply_pack", null).is("error", null);
   const { data: job } = await q.order("match_percent", { ascending: false }).limit(1).maybeSingle();
   if (!job) return { done: true, remaining: 0 };
-
-  const [{ data: profile }, { data: ach }] = await Promise.all([
-    db.from("profiles").select("cv_text, full_name, email, prefs").eq("id", userId).single(),
-    db.from("achievements").select("kind, title, issuer, date_text, description").eq("user_id", userId).eq("status", "confirmed"),
-  ]);
-  const prefs = mergePrefs(profile?.prefs);
+  const jobInfo = { id: job.id, title: job.title, company: job.company };
 
   try {
+    // Step 1: company research, in its own request (cached for everyone for 30 days).
+    if (job.company && !(await cachedCompanyResearch(job.company))) {
+      try {
+        await getCompanyResearch(job.company);
+      } catch (e) {
+        if (e instanceof AIServiceError && (e.status === 429 || e.status === 503)) throw e;
+        await noteResearchUnknown(job.company); // search unavailable → write the pack without it
+      }
+      return { done: false, remaining: await count(), step: "research", job: jobInfo };
+    }
+
+    // Step 2: the pack.
+    const [{ data: profile }, { data: ach }] = await Promise.all([
+      db.from("profiles").select("cv_text, full_name, email, prefs").eq("id", userId).single(),
+      db.from("achievements").select("kind, title, issuer, date_text, description").eq("user_id", userId).eq("status", "confirmed"),
+    ]);
+    const prefs = mergePrefs(profile?.prefs);
     const pack = await buildApplyPack(profile || { cv_text: "", full_name: null, email: null }, prefs, achievementsForPrompt(ach || []), job);
     const now = Date.now();
     await db
@@ -188,12 +240,21 @@ export async function applierNext(userId: string, jobId?: string) {
         apply_route: pack.route,
         referral_wait_until: pack.route === "referral_first" ? new Date(now + REFERRAL_WAIT_DAYS * 86400_000).toISOString() : null,
         apply_prepared_at: new Date(now).toISOString(),
+        error: null,
         updated_at: new Date(now).toISOString(),
       })
       .eq("id", job.id);
-    return { done: false, remaining: await count(), job: { id: job.id, title: job.title, company: job.company, route: pack.route } };
+    return { done: false, remaining: await count(), step: "pack", job: { ...jobInfo, route: pack.route } };
   } catch (e) {
-    if (e instanceof AIServiceError && (e.status === 429 || e.status === 503)) return { done: false, remaining: await count(), rate_limited: true };
-    throw e;
+    if (e instanceof AIServiceError && (e.status === 429 || e.status === 503)) {
+      // Not the job's fault: leave it queued and tell the caller why.
+      return { done: false, remaining: await count(), rate_limited: true, daily_limit: e.daily, message: e.message, job: jobInfo };
+    }
+    const message =
+      e instanceof AIServiceError && e.status === 504
+        ? "The AI took too long writing this apply pack. Click Prepare apply pack to try again."
+        : `Couldn't prepare the apply pack: ${(e as Error).message || e}`.slice(0, 400);
+    await db.from("jobs").update({ error: message }).eq("id", job.id);
+    return { done: false, remaining: await count(), step: "failed", message, job: jobInfo };
   }
 }

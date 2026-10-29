@@ -226,6 +226,7 @@ async function runHunter(trigger) {
       }
       if (r.done) break;
       if (r.rate_limited) {
+        if (r.daily_limit) { await log(`Tailor paused: ${r.message}`); break; }
         await setProgress({ phase: "Tailor", detail: "AI limit reached — waiting a minute", badge: r.remaining });
         await sleep(60_000);
         continue;
@@ -239,11 +240,28 @@ async function runHunter(trigger) {
     // 5) Applier: an apply pack for every tailored job
     stats.packs = 0;
     while (Date.now() < deadline && !(await get("stop"))) {
-      const r = await api("/api/ext/applier-next", { method: "POST" });
+      let r;
+      try {
+        r = await api("/api/ext/applier-next", { method: "POST" });
+      } catch (e) {
+        await log(`Applier stopped: ${e.message}`);
+        break;
+      }
       if (r.done) break;
       if (r.rate_limited) {
+        if (r.daily_limit) { await log(`Applier paused: ${r.message}`); break; }
         await setProgress({ phase: "Applier", detail: "AI limit reached — waiting a minute", badge: r.remaining });
         await sleep(60_000);
+        continue;
+      }
+      if (r.step === "research") {
+        await setProgress({ phase: "Applier", detail: `Checking how ${r.job ? r.job.company : "the company"} hires`, badge: r.remaining });
+        await sleep(3000);
+        continue;
+      }
+      if (r.step === "failed") {
+        await log(`Applier skipped ${r.job ? r.job.title : "a job"}: ${r.message}`);
+        await sleep(3000);
         continue;
       }
       stats.packs++;

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api } from "@/lib/supabase-browser";
 import { ask, useExtension } from "@/components/ExtensionConnect";
 import type { Contact, Job } from "@/lib/types";
+import { prepareApplyPack } from "@/lib/apply-pack-client";
 
 export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
@@ -59,8 +60,8 @@ export default function ApplyPackPanel({
     setMsg("Applier is checking how this company hires and preparing your pack…");
     try {
       if (pack) await api(`/api/jobs/${job.id}`, { method: "PATCH", body: JSON.stringify({ reprepare: true }) });
-      await api("/api/applier/next", { method: "POST", body: JSON.stringify({ job_id: job.id }) });
-      setMsg(null);
+      const problem = await prepareApplyPack(job.id, setMsg);
+      setMsg(problem);
       onChanged();
     } catch (e) {
       setMsg((e as Error).message);

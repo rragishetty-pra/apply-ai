@@ -79,7 +79,16 @@ export function jobStage(job: Job, contacts: Contact[] = [], now = Date.now()): 
   }
 
   // Tailored, not applied
-  if (!job.apply_pack) return { key: "pack", label: "Tailored", detail: "Apply pack not ready yet", tone: "action", group: "action", next: { label: "Prepare apply pack", kind: "prepare" }, step: 1 };
+  if (!job.apply_pack)
+    return {
+      key: "pack",
+      label: "Tailored",
+      detail: job.error || "Apply pack not ready yet",
+      tone: job.error ? "bad" : "action",
+      group: "action",
+      next: { label: job.error ? "Try apply pack again" : "Prepare apply pack", kind: "prepare" },
+      step: 1,
+    };
   const openNeeds = (job.apply_pack.needs_you || []).filter((n) => !(n.answer || "").trim()).length;
   const needsNote = openNeeds ? `${openNeeds} question${openNeeds > 1 ? "s need" : " needs"} your answer` : "";
 
