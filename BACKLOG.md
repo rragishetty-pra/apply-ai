@@ -35,6 +35,7 @@ Items are roughly in priority order within each section. Move an item to "Done" 
 - Mock-interview scoring history in Coach.
 
 ## Done
+- 2026-10-29 — Achievements "paste a post link": accepts lnkd.in short links (waits for the redirect), reads LinkedIn's new single-post layout, and picks ~800px post images instead of 160px thumbnails (also helps Scan my LinkedIn). Extension v0.4.9.
 - 2026-10-29 — Extension not connected (new install, reloaded, new computer) → opens the home page to sign in or sign up, never the CV upload; home page shows "Dashboard" to signed-in visitors; finished profiles skip onboarding. Extension v0.4.8.
 - 2026-10-29 — Applier fixed end to end: company research and the pack run as separate steps; packs get up to 180s and full tailoring 120s; a failing job is set aside with its reason instead of blocking the queue; per-job buttons show progress and real reasons. Gemini: models that don't answer are skipped for 10 minutes, 3.5-flash tried first, Google Search refusals fall back to plain answers, daily vs per-minute limits told apart. New /api/ai-health check.
 - 2026-10-26 — Live run fixes: Tailor split into two short steps with a 3-try limit (one slow job no longer blocks the queue); Indeed decoy links skipped and descriptions read from the results pane (no bot checks); LinkedIn's new job search and job pages; Hirist's real search address; bot-check and expired pages no longer overwrite job titles.

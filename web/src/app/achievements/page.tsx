@@ -209,11 +209,11 @@ export default function Achievements() {
                 <input
                   id="post-url"
                   className="input"
-                  placeholder="https://www.linkedin.com/posts/…"
+                  placeholder="https://www.linkedin.com/posts/… or https://lnkd.in/…"
                   value={postUrl}
                   onChange={(e) => setPostUrl(e.target.value)}
                 />
-                <button className="btn-ghost w-full" disabled={busy === "post" || !/linkedin\.com\/(posts|feed\/update)\//.test(postUrl)}>
+                <button className="btn-ghost w-full" disabled={busy === "post" || !/linkedin\.com\/(posts|feed\/update)\/|lnkd\.in\//.test(postUrl)}>
                   {busy === "post" ? "Reading post…" : "Read this post"}
                 </button>
               </form>

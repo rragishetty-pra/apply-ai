@@ -459,13 +459,31 @@ async function scanLinkedIn() {
 }
 
 /** Read ONE LinkedIn post the user pastes (for posts LinkedIn doesn't list in their activity). */
+const POST_URL = /^https:\/\/(www\.)?linkedin\.com\/(posts|feed\/update)\//;
+const SHORT_URL = /^https:\/\/lnkd\.in\/[A-Za-z0-9_/-]+/;
+
 async function readLinkedInPost(url) {
-  if (!/^https:\/\/www\.linkedin\.com\/(posts|feed\/update)\//.test(url || "")) throw new Error("Paste a link to a LinkedIn post (it starts with linkedin.com/posts/ or linkedin.com/feed/update/).");
+  url = String(url || "").trim().replace(/^http:\/\//, "https://");
+  if (!POST_URL.test(url) && !SHORT_URL.test(url)) {
+    throw new Error("Paste a link to a LinkedIn post: linkedin.com/posts/…, linkedin.com/feed/update/… or a short lnkd.in/… link.");
+  }
   const worker = await openWorker();
   try {
     const loaded = waitForLoad(worker.tabId, 15000);
     await chrome.tabs.update(worker.tabId, { url });
     await loaded;
+    // Short lnkd.in links redirect to the post a moment after loading: wait for the real post page.
+    if (SHORT_URL.test(url)) {
+      let finalUrl = "";
+      for (let i = 0; i < 30; i++) {
+        finalUrl = (await chrome.tabs.get(worker.tabId)).url || "";
+        if (POST_URL.test(finalUrl)) break;
+        await sleep(500);
+      }
+      if (!POST_URL.test(finalUrl)) throw new Error("That short link didn't open a LinkedIn post. Open it, then copy the post's own link (⋯ → Copy link to post).");
+      await sleep(2500); // let the post page render
+      url = finalUrl.split("?")[0];
+    }
     const r = await run(worker.tabId, scrapeLinkedInPosts, []).catch(() => null);
     const post = r && r.posts && r.posts[0];
     if (!post) throw new Error("Couldn't read that post. Check you're signed in to LinkedIn and the link opens your post.");

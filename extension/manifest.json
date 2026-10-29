@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Apply.ai \u2014 Hunter",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "description": "Lets Apply.ai's Hunter agent search Naukri, LinkedIn and Indeed from your own signed-in Chrome. Your passwords never leave your browser.",
   "permissions": [
     "storage",

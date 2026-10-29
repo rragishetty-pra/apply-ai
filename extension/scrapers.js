@@ -546,6 +546,22 @@ async function detectSignedIn() {
 /** Read the user's own LinkedIn posts (activity → Posts), with certificate image links. */
 async function scrapeLinkedInPosts() {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // Pick a readable size of a post image (about 800px) from its srcset; the src is often a 160px thumbnail.
+  const bestSrc = (img) => {
+    const opts = (img.getAttribute("srcset") || "")
+      .split(",")
+      .map((s) => s.trim().split(/\s+/))
+      .map(([u, w]) => ({ u, w: parseInt(w, 10) || 0 }))
+      .filter((o) => o.u);
+    const good = opts.filter((o) => o.w >= 480 && o.w <= 1300).sort((a, b) => Math.abs(a.w - 800) - Math.abs(b.w - 800))[0];
+    return (good && good.u) || img.getAttribute("src") || img.getAttribute("data-delayed-url") || img.currentSrc || "";
+  };
+  const dateFromUrn = (urn) => {
+    try {
+      const id = (String(urn).match(/(\d{15,})/) || [])[1];
+      return id ? new Date(Number(BigInt(id) >> 22n)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+    } catch { return ""; }
+  };
   const POST_SEL = ".feed-shared-update-v2, div[data-urn^='urn:li:activity'], div[data-id^='urn:li:activity']";
   for (let i = 0; i < 16 && !document.querySelector(POST_SEL); i++) await sleep(500);
 
@@ -592,7 +608,7 @@ async function scrapeLinkedInPosts() {
     if (!date) date = ((el.querySelector(".update-components-actor__sub-description, .feed-shared-actor__sub-description") || {}).innerText || "").split("•")[0].trim();
     // Post images live on LinkedIn's "feedshare" CDN path; match by URL (images in a background window may not have loaded yet).
     const images = [...el.querySelectorAll("img")]
-      .map((img) => img.getAttribute("src") || img.getAttribute("data-delayed-url") || img.currentSrc || "")
+      .map(bestSrc)
       .filter((u) => /^https:\/\/media\.licdn\.com\/.*feedshare/.test(u))
       .filter((u, i, a) => a.indexOf(u) === i)
       .slice(0, 2);
@@ -605,6 +621,33 @@ async function scrapeLinkedInPosts() {
       images,
     });
     if (posts.length >= 30) break;
+  }
+  // LinkedIn's newer single-post page (opened from a pasted link) has none of the classes above:
+  // read the post text box, the post id from the page, and the post's images directly.
+  if (!posts.length && /linkedin\.com\/(posts|feed\/update)\//.test(location.href)) {
+    for (let i = 0; i < 16 && !document.querySelector("[data-testid='expandable-text-box']"); i++) await sleep(500);
+    document.querySelectorAll("button").forEach((b) => {
+      const t = (b.innerText || "").trim().toLowerCase();
+      if (t === "…more" || t === "...more" || t === "see more") b.click();
+    });
+    await sleep(600);
+    const box = document.querySelector("[data-testid='expandable-text-box']");
+    const urn = (document.documentElement.innerHTML.match(/urn:li:activity:\d{15,}/) || [""])[0];
+    const images = [...document.querySelectorAll("img")]
+      .filter((img) => /feedshare/.test(img.getAttribute("src") || img.getAttribute("srcset") || ""))
+      .map(bestSrc)
+      .filter((u) => /^https:\/\/media\.licdn\.com\/.*feedshare/.test(u))
+      .filter((u, i, a) => a.indexOf(u) === i)
+      .slice(0, 2);
+    const text = ((box && box.innerText) || "").replace(/\n{2,}/g, "\n").trim();
+    if (text || images.length) {
+      posts.push({
+        date: dateFromUrn(urn),
+        text: text.slice(0, 2500),
+        url: urn ? `https://www.linkedin.com/feed/update/${urn}/` : location.href.split("?")[0],
+        images,
+      });
+    }
   }
   return { url: location.href, posts };
 }
