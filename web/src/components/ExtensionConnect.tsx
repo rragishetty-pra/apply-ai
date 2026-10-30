@@ -26,6 +26,25 @@ export function ask<T>(type: string, payload: Record<string, unknown> = {}, time
   });
 }
 
+/** The installed extension's version (from its PING reply), or null if it isn't installed. */
+export function useExtensionVersion() {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const check = () =>
+      ask<{ version?: string }>("PING", {}, 1500)
+        .then((r) => alive && setVersion(r?.version || "0.0.0"))
+        .catch(() => {});
+    check();
+    const t = setTimeout(check, 2500); // the extension's page bridge may load a moment after the page
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, []);
+  return version;
+}
+
 export function useExtension() {
   const [installed, setInstalled] = useState(false);
   useEffect(() => {

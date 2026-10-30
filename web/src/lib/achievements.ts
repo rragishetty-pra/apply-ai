@@ -74,6 +74,7 @@ export async function parseLinkedIn(sections: Section[], existing: Pick<Achievem
     temperature: 0.1,
     tier: images || posts.length ? "main" : "lite", // posts need judgement; the main model reads them more reliably
     maxTokens: 4096,
+    timeoutMs: 100_000, // reading certificate images is slow when Google is busy; the route allows 120s
   });
 
   const seen = new Set(existing.map(key));

@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/supabase-browser";
 import { useAuth } from "@/components/useAuth";
 import Shell from "@/components/Shell";
-import { ask, useExtension } from "@/components/ExtensionConnect";
+import { ask, useExtension, useExtensionVersion } from "@/components/ExtensionConnect";
+import { EXTENSION_DOWNLOAD_URL, isOlder } from "@/lib/extension-version";
 import type { Achievement, AchievementKind } from "@/lib/types";
 
 const KIND_LABEL: Record<AchievementKind, string> = {
@@ -20,12 +21,14 @@ const EMPTY = { kind: "certification" as AchievementKind, title: "", issuer: "",
 export default function Achievements() {
   const { session } = useAuth();
   const extension = useExtension();
+  const extVersion = useExtensionVersion();
   const [list, setList] = useState<Achievement[] | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [postUrl, setPostUrl] = useState("");
+  const [postNote, setPostNote] = useState<{ text: string; tone: "info" | "ok" | "bad" } | null>(null);
 
   const load = useCallback(async () => {
     const { achievements } = await api<{ achievements: Achievement[] }>("/api/achievements");
@@ -83,15 +86,24 @@ export default function Achievements() {
 
   async function readPost(e: React.FormEvent) {
     e.preventDefault();
+    // Reading pasted links (short lnkd.in links, LinkedIn's new post pages) needs extension 0.4.9+.
+    if (extVersion && isOlder(extVersion, "0.4.9")) {
+      setPostNote({ text: `Your Chrome extension (${extVersion}) can't read this kind of link yet. Update it using the banner at the top of the page, then try again.`, tone: "bad" });
+      return;
+    }
     setBusy("post");
-    setMsg("Reading that post and its certificate image…");
+    setPostNote({ text: "Opening the post in a background window and reading it, with its certificate image. This takes up to a minute…", tone: "info" });
     try {
-      const r = await ask<{ found: number }>("READ_POST", { url: postUrl.trim() }, 120_000);
-      setMsg(r.found ? "Got it. Check the new item on the right and keep it if it's right." : "Read the post, but didn't find an achievement in it (or it's already in your list).");
-      setPostUrl("");
+      const r = await ask<{ found: number }>("READ_POST", { url: postUrl.trim() }, 150_000);
       await load();
+      setPostNote(
+        r.found
+          ? { text: `Added ${r.found} item${r.found > 1 ? "s" : ""} under "Found on LinkedIn" on the right. Check it and click Keep.`, tone: "ok" }
+          : { text: "Read the post, but found no certificate, award or appreciation in it that isn't already in your list.", tone: "info" }
+      );
+      if (r.found) setPostUrl("");
     } catch (e) {
-      setMsg((e as Error).message);
+      setPostNote({ text: (e as Error).message || "Couldn't read that post.", tone: "bad" });
     } finally {
       setBusy(null);
     }
@@ -216,6 +228,19 @@ export default function Achievements() {
                 <button className="btn-ghost w-full" disabled={busy === "post" || !/linkedin\.com\/(posts|feed\/update)\/|lnkd\.in\//.test(postUrl)}>
                   {busy === "post" ? "Reading post…" : "Read this post"}
                 </button>
+                {postNote && (
+                  <p
+                    role="status"
+                    className={`text-sm rounded-[14px] px-3 py-2 leading-snug ${
+                      postNote.tone === "ok" ? "bg-accent-soft text-accent" : postNote.tone === "bad" ? "bg-rose-soft text-rose" : "bg-mist text-ink"
+                    }`}
+                  >
+                    {postNote.text}
+                    {postNote.tone === "bad" && extVersion && isOlder(extVersion, "0.4.9") && (
+                      <> <a className="underline font-semibold" href={EXTENSION_DOWNLOAD_URL}>Download the latest extension</a>.</>
+                    )}
+                  </p>
+                )}
               </form>
             )}
           </div>

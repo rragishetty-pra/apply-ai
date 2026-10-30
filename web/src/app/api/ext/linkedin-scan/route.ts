@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { parseLinkedIn, type PostIn } from "@/lib/achievements";
 
 export const OPTIONS = preflight;
-export const maxDuration = 60;
+export const maxDuration = 120; // reading certificate images (Fluid compute)
 
 /**
  * The extension read the user's own LinkedIn certifications, honours, recommendations and
