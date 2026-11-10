@@ -18,6 +18,7 @@ Items are roughly in priority order within each section. Move an item to "Done" 
 - **Decision:** switch only if decisions agree, no needs-you items are missed, and cover notes are comparable.
 
 ## Next up
+- Tailor scoring: penalise seniority and location mismatches (an old Gemini score gave a 0–3-year SQL Developer job in Chandigarh 90%; Applier caught it in "needs you").
 - Claude cost: cache the CV + preferences block with prompt caching (the same CV goes into every Tailor/Applier call).
 - When the extension changes, bump LATEST_EXTENSION in web/src/lib/extension-version.ts to match extension/manifest.json.
 - Vercel setting GEMINI_MODEL is "gemini-2.5-flash", which Google has retired (harmless, falls through in 0.2s): change it to gemini-3.5-flash.
