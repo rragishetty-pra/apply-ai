@@ -103,8 +103,8 @@ export default function Dashboard() {
       if (r.done) break;
       if (r.rate_limited) {
         if (r.daily_limit) {
-          // Nothing will work until Google's quota resets: say so and stop.
-          setApplying(r.message || "Google's free daily AI limit is used up for today.");
+          // Nothing will work until the limit resets or credit is added: say so and stop.
+          setApplying(r.message || "The AI can't continue right now.");
           await new Promise((res) => setTimeout(res, 12_000));
           break;
         }
@@ -174,7 +174,7 @@ export default function Dashboard() {
       if (r.done) break;
       if (r.rate_limited) {
         if (r.daily_limit) {
-          setTailoring(r.message || "Google's free daily AI limit is used up for today.");
+          setTailoring(r.message || "The AI can't continue right now.");
           await new Promise((res) => setTimeout(res, 12_000));
           break;
         }

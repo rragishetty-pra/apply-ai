@@ -55,7 +55,7 @@ export async function resolveCompany(c: CompanyRow): Promise<CompanyRow> {
     if (!careers) {
       const out = await askGroundedJSON<{ careers_url?: string; job_search_url?: string }>(
         `Find the official careers website where ${c.name} lists its job openings in India.
-Use Google Search. Prefer the actual job-search page (often hosted on Workday "myworkdayjobs.com", Greenhouse,
+Use web search. Prefer the actual job-search page (often hosted on Workday "myworkdayjobs.com", Greenhouse,
 Lever, SmartRecruiters, Ashby, SuccessFactors, Oracle, iCIMS or Taleo) over a marketing page.
 Return ONLY JSON: {"careers_url": "https://...", "job_search_url": "https://... or empty"}`,
         { temperature: 0 }

@@ -18,7 +18,7 @@ interface Step {
 export async function prepareApplyPack(jobId: string, onStatus?: (text: string) => void): Promise<string | null> {
   for (let i = 0; i < 4; i++) {
     const r = await api<Step>("/api/applier/next", { method: "POST", body: JSON.stringify({ job_id: jobId }) });
-    if (r.rate_limited) return r.message || "Google's AI is busy right now. Try again in a minute.";
+    if (r.rate_limited) return r.message || "The AI is busy right now. Try again in a minute.";
     if (r.step === "failed") return r.message || "Couldn't prepare the apply pack.";
     if (r.step === "pack" || r.done) return null;
     if (r.step === "research") onStatus?.("Checked how this company hires. Writing your pack…");

@@ -18,6 +18,7 @@ Items are roughly in priority order within each section. Move an item to "Done" 
 - **Decision:** switch only if decisions agree, no needs-you items are missed, and cover notes are comparable.
 
 ## Next up
+- Claude cost: cache the CV + preferences block with prompt caching (the same CV goes into every Tailor/Applier call).
 - When the extension changes, bump LATEST_EXTENSION in web/src/lib/extension-version.ts to match extension/manifest.json.
 - Vercel setting GEMINI_MODEL is "gemini-2.5-flash", which Google has retired (harmless, falls through in 0.2s): change it to gemini-3.5-flash.
 - Google Search grounding is refused on our free Gemini key ("exceeded your current quota"). Company research and Coach answer from general knowledge until search is enabled (billing) — decide if that's worth it.
@@ -36,6 +37,7 @@ Items are roughly in priority order within each section. Move an item to "Done" 
 - Mock-interview scoring history in Coach.
 
 ## Done
+- 2026-11-10 — Agents can run on Claude (Anthropic API): Sonnet 5.5 for Tailor/Applier/Coach/Achievements, Haiku 5.5 for quick scores and triage, Claude web search for company research and Coach. Switches on when ANTHROPIC_API_KEY is set in Vercel (AI_PROVIDER=gemini forces Gemini). /api/ai-health tests Claude.
 - 2026-10-30 — Signed-in pages show "Update your Chrome extension" (with a download link) when the installed extension is older than the app expects. Achievements: reading a pasted post shows a clear coloured result in the card; certificate reading gets 120s.
 - 2026-10-29 — Achievements "paste a post link": accepts lnkd.in short links (waits for the redirect), reads LinkedIn's new single-post layout, and picks ~800px post images instead of 160px thumbnails (also helps Scan my LinkedIn). Extension v0.4.9.
 - 2026-10-29 — Extension not connected (new install, reloaded, new computer) → opens the home page to sign in or sign up, never the CV upload; home page shows "Dashboard" to signed-in visitors; finished profiles skip onboarding. Extension v0.4.8.

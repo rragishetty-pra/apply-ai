@@ -25,7 +25,7 @@ COMPANY: ${job.company}
 INTERVIEW DATE: ${job.interviewAt || "not given"} (today is ${today})
 WHAT THE RECRUITER SAID: ${job.notes || "nothing"}
 
-STEP 1 — RESEARCH. Use Google Search to find what real candidates have shared about interviewing at
+STEP 1 — RESEARCH. Use web search to find what real candidates have shared about interviewing at
 ${job.company} for "${job.role}" or closely related roles. Look especially at Glassdoor interview reviews,
 AmbitionBox interviews, Reddit (e.g. r/developersIndia, r/cscareerquestions), LeetCode Discuss, GeeksforGeeks
 interview experiences, Blind, Indeed company interviews, and the company's own careers pages.
@@ -84,7 +84,7 @@ export async function buildUpskillPlan(
     `You are "Coach", a practical career coach. Make a learning plan so this person can qualify for the jobs they want.
 GOAL: ${skills.length ? `learn ${skills.join(", ")}` : "close the gaps"}${goal.role ? ` to become a strong candidate for "${goal.role}"` : ""}.
 ${goal.jobsContext ? `JOBS THEY ARE AIMING AT (and what those jobs asked for):\n${goal.jobsContext}\n` : ""}
-Use Google Search to check current, well-regarded learning resources (official docs, free courses, certifications
+Use web search to check current, well-regarded learning resources (official docs, free courses, certifications
 that employers in India and abroad actually ask for). Prefer free resources; mark paid ones.
 
 Return ONLY JSON:
@@ -134,7 +134,7 @@ export async function askCoach(
 
   return askGroundedJSON<CoachReply>(
     `You are "Coach", continuing a conversation with a job seeker about: ${ctx.title} (${ctx.kind === "interview" ? "interview prep" : "learning plan"}).
-Today is ${today}. Be warm, direct and specific to their CV. Use Google Search when they ask for anything you
+Today is ${today}. Be warm, direct and specific to their CV. Use web search when they ask for anything you
 should look up (more questions from Glassdoor/AmbitionBox/Reddit, a course, a company fact).
 
 Ways you can help:

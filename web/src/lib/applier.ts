@@ -63,7 +63,7 @@ export async function getCompanyResearch(company: string): Promise<Research | nu
   const cached = await cachedCompanyResearch(company);
   if (cached) return cached;
   const out = await askGroundedJSON<CompanyResearch>(
-    `Research how ${company} hires in India, using Google Search.
+    `Research how ${company} hires in India, using web search.
 Does it run an employee referral programme? Do candidates on Glassdoor, AmbitionBox or Reddit say referrals matter
 there, or that cold applications get ignored? Is it a large company where applications pile up, or a staffing /
 consulting firm or startup where applying directly works fine?
@@ -79,8 +79,8 @@ Return ONLY JSON: {"referral_culture": "strong" | "some" | "weak" | "unknown", "
     notes: (Array.isArray(out.data.notes) ? out.data.notes : []).map((x) => String(x).slice(0, 200)).slice(0, 3),
   };
   if (!out.grounded) {
-    // Google Search wasn't available: this is the AI's general knowledge, so say so and re-check in a week.
-    data.notes = ["Not checked with Google Search (general knowledge only)", ...data.notes].slice(0, 3);
+    // Web search wasn't available: this is the AI's general knowledge, so say so and re-check in a week.
+    data.notes = ["Not checked with a web search (general knowledge only)", ...data.notes].slice(0, 3);
   }
   const researched_at = new Date(Date.now() - (out.grounded ? 0 : (RESEARCH_TTL_DAYS - 7) * 86400_000)).toISOString();
   await db.from("company_research").upsert({ company_key: key, company, data, sources: out.sources.slice(0, 10), researched_at });

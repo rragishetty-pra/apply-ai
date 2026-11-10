@@ -1,5 +1,25 @@
 import "server-only";
 import { HttpError } from "./auth";
+import { ClaudeError, claudeAskGroundedJSON, claudeAskJSON } from "./claude";
+
+/**
+ * Which AI the agents use. Claude when ANTHROPIC_API_KEY is set (AI_PROVIDER=gemini forces Gemini),
+ * otherwise Google Gemini. Every agent calls askJSON / askGroundedJSON below, so this is the only switch.
+ */
+export function aiProvider(): "claude" | "gemini" {
+  if (process.env.AI_PROVIDER === "gemini" && process.env.GEMINI_API_KEY) return "gemini";
+  return process.env.ANTHROPIC_API_KEY ? "claude" : "gemini";
+}
+
+/** Claude errors → the same AIServiceError every agent already handles (busy, limits, out of credit). */
+async function viaClaude<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (e) {
+    if (e instanceof ClaudeError) throw new AIServiceError(e.status === 402 ? 429 : e.status, e.message, e.daily);
+    throw e;
+  }
+}
 
 /**
  * Minimal Gemini client (REST, JSON mode). One place to swap providers later.
@@ -84,6 +104,14 @@ function bySpeed(models: string[]): string[] {
 export type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
 export async function askJSON<T>(
+  prompt: string | Part[],
+  opts: { temperature?: number; maxTokens?: number; tier?: "lite" | "main"; timeoutMs?: number } = {}
+): Promise<T> {
+  if (aiProvider() === "claude") return viaClaude(() => claudeAskJSON<T>(prompt, opts, parseJSON));
+  return geminiAskJSON<T>(prompt, opts);
+}
+
+async function geminiAskJSON<T>(
   prompt: string | Part[],
   opts: { temperature?: number; maxTokens?: number; tier?: "lite" | "main"; timeoutMs?: number } = {}
 ): Promise<T> {
@@ -188,6 +216,11 @@ export interface Grounded<T> {
  * search isn't available on this key/model, and says so via `grounded: false`.
  */
 export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: number } = {}): Promise<Grounded<T>> {
+  if (aiProvider() === "claude") return viaClaude(() => claudeAskGroundedJSON<T>(prompt, opts, parseJSON));
+  return geminiAskGroundedJSON<T>(prompt, opts);
+}
+
+async function geminiAskGroundedJSON<T>(prompt: string, opts: { temperature?: number } = {}): Promise<Grounded<T>> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AIServiceError(500, "GEMINI_API_KEY is not set on the server.");
   const candidates = [...new Set([workingModel, process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean) as string[])];
@@ -229,7 +262,7 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
     if (res.status === 503 || res.status === 500) continue; // overloaded: try the next model
     if (res.status === 400 || res.status === 403) {
       // Search grounding not available for this key/model → ungrounded answer
-      const data = await askJSON<T>(prompt, opts);
+      const data = await geminiAskJSON<T>(prompt, opts);
       return { data, sources: [], searchHtml: null, grounded: false };
     }
     if (!res.ok) {
@@ -260,7 +293,7 @@ export async function askGroundedJSON<T>(prompt: string, opts: { temperature?: n
   if (gLimited) {
     // Google Search refused (on our free key its search quota is used up or zero, while plain answers
     // still work): answer without search, and say so via grounded: false.
-    const data = await askJSON<T>(prompt, opts);
+    const data = await geminiAskJSON<T>(prompt, opts);
     return { data, sources: [], searchHtml: null, grounded: false };
   }
   throw new AIServiceError(503, "No AI model is available. Set GEMINI_MODEL in Vercel to a current model, e.g. gemini-3.8-flash.");

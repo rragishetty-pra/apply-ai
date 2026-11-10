@@ -642,7 +642,7 @@ function Sources({ s }: { s: CoachSession }) {
       )}
       {s.search_html && (
         <iframe
-          title="Related Google searches"
+          title="Related searches"
           sandbox="allow-popups allow-popups-to-escape-sandbox"
           className="w-full h-24 rounded-2xl"
           srcDoc={`<base target="_blank">${s.search_html}`}
